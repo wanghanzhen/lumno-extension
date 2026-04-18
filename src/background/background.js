@@ -30,6 +30,12 @@ try {
 }
 
 try {
+  importScripts(chrome.runtime.getURL('src/shared/search/query-context.js'));
+} catch (error) {
+  console.warn('Lumno: failed to load search query context helpers.', error);
+}
+
+try {
   importScripts(chrome.runtime.getURL('src/shared/search/suggestions.js'));
 } catch (error) {
   console.warn('Lumno: failed to load search suggestion utils.', error);
@@ -806,6 +812,7 @@ const storageAreaName = storageArea
   : null;
 const STORAGE_MIGRATION_UTILS = globalThis.LumnoStorageMigration || {};
 const SEARCH_PROTOCOL = globalThis.LumnoSearchProtocol || {};
+const SEARCH_QUERY_CONTEXT_UTILS = globalThis.LumnoSearchQueryContext || {};
 const SEARCH_SUGGESTION_UTILS = globalThis.LumnoSearchSuggestions || {};
 const SEARCH_ENGINE_UTILS = globalThis.LumnoSearchEngines || {};
 const SEARCH_FAVICON_UTILS = globalThis.LumnoSearchFavicons || {};
@@ -4644,6 +4651,9 @@ function fetchFaviconData(url) {
 }
 
 function normalizeSiteSearchTemplate(template) {
+  if (SITE_SEARCH_PROVIDER_UTILS.normalizeSiteSearchTemplate) {
+    return SITE_SEARCH_PROVIDER_UTILS.normalizeSiteSearchTemplate(template);
+  }
   if (!template) {
     return '';
   }
@@ -4654,6 +4664,9 @@ function normalizeSiteSearchTemplate(template) {
 }
 
 function sanitizeSiteSearchProviders(items) {
+  if (SITE_SEARCH_PROVIDER_UTILS.sanitizeSiteSearchProviders) {
+    return SITE_SEARCH_PROVIDER_UTILS.sanitizeSiteSearchProviders(items);
+  }
   if (!Array.isArray(items)) {
     return [];
   }
@@ -4765,6 +4778,9 @@ function buildBlacklistProbeUrlFromTemplate(template, query) {
 }
 
 function isInteractiveSiteSearchProvider(provider) {
+  if (SITE_SEARCH_PROVIDER_UTILS.isInteractiveSiteSearchProvider) {
+    return SITE_SEARCH_PROVIDER_UTILS.isInteractiveSiteSearchProvider(provider);
+  }
   return Boolean(
     provider &&
     provider.action === 'openAndSubmit' &&
@@ -5650,6 +5666,9 @@ const SEARCH_ACTION_SEGMENTS = new Set([
 ]);
 
 function splitSearchTerms(value) {
+  if (SEARCH_QUERY_CONTEXT_UTILS.splitSearchTerms) {
+    return SEARCH_QUERY_CONTEXT_UTILS.splitSearchTerms(value);
+  }
   return Array.from(new Set(
     String(value || '')
       .toLowerCase()
@@ -5660,6 +5679,18 @@ function splitSearchTerms(value) {
 }
 
 function buildSearchQueryContext(query) {
+  if (SEARCH_QUERY_CONTEXT_UTILS.buildSearchQueryContext) {
+    return SEARCH_QUERY_CONTEXT_UTILS.buildSearchQueryContext(query, {
+      normalizePinyinQuery: (lookupQuery) => (
+        shouldUseTitlePinyinMatch(lookupQuery)
+          ? normalizeAsciiQueryForPinyin(lookupQuery)
+          : ''
+      ),
+      pathIntentTerms: SEARCH_PATH_INTENT_TERMS,
+      settingsIntentTerms: SEARCH_SETTINGS_INTENT_TERMS,
+      informationalTerms: SEARCH_INFORMATIONAL_TERMS
+    });
+  }
   const lookupQuery = String(query || '');
   const queryLower = lookupQuery.trim().toLowerCase();
   const normalizedPinyinQuery = shouldUseTitlePinyinMatch(lookupQuery)
@@ -5858,6 +5889,9 @@ function getSearchEngineSuggestionScore(context, localSuggestions) {
 }
 
 function looksLikeVersionSegment(segment) {
+  if (SEARCH_QUERY_CONTEXT_UTILS.looksLikeVersionSegment) {
+    return SEARCH_QUERY_CONTEXT_UTILS.looksLikeVersionSegment(segment);
+  }
   const value = String(segment || '').trim().toLowerCase();
   if (!value) {
     return false;
@@ -5977,6 +6011,9 @@ function getSearchSuggestionClusterInfo(url) {
 }
 
 function looksLikeNavigationQuery(query) {
+  if (SEARCH_QUERY_CONTEXT_UTILS.looksLikeNavigationQuery) {
+    return SEARCH_QUERY_CONTEXT_UTILS.looksLikeNavigationQuery(query);
+  }
   const value = String(query || '').trim().toLowerCase();
   if (!value) {
     return false;
@@ -5991,6 +6028,11 @@ function looksLikeNavigationQuery(query) {
 }
 
 function classifySearchIntent(query, queryTerms) {
+  if (SEARCH_QUERY_CONTEXT_UTILS.classifySearchIntent) {
+    return SEARCH_QUERY_CONTEXT_UTILS.classifySearchIntent(query, queryTerms, {
+      pathIntentTerms: SEARCH_PATH_INTENT_TERMS
+    });
+  }
   const raw = String(query || '').trim().toLowerCase();
   const terms = Array.isArray(queryTerms) ? queryTerms.filter(Boolean) : [];
   if (looksLikeNavigationQuery(raw)) {
@@ -6063,6 +6105,9 @@ function getSearchSourceAdjustment(sourceType, intentType) {
 }
 
 function matchesSearchQueryText(item, context) {
+  if (SEARCH_QUERY_CONTEXT_UTILS.matchesSearchQueryText) {
+    return SEARCH_QUERY_CONTEXT_UTILS.matchesSearchQueryText(item, context);
+  }
   if (!item || !item.url) {
     return false;
   }
@@ -6513,6 +6558,12 @@ function buildSearchSuggestionFavicon(url) {
 }
 
 function collectSearchMatches(items, context, searchBlacklistItems) {
+  if (SEARCH_QUERY_CONTEXT_UTILS.collectSearchMatches) {
+    return SEARCH_QUERY_CONTEXT_UTILS.collectSearchMatches(items, context, {
+      matchesTitlePinyin: matchesSearchTitlePinyin,
+      isBlocked: (item) => isUrlBlockedBySearchBlacklist(item && item.url, searchBlacklistItems)
+    });
+  }
   return (Array.isArray(items) ? items : []).filter((item) => (
     (matchesSearchQueryText(item, context) || matchesSearchTitlePinyin(item, context)) &&
     !isUrlBlockedBySearchBlacklist(item && item.url, searchBlacklistItems)
@@ -11460,6 +11511,9 @@ async function getSearchSuggestions(query, options) {
     }
 
     function buildSearchUrl(template, query) {
+      if (SITE_SEARCH_PROVIDER_UTILS.buildSearchUrl) {
+        return SITE_SEARCH_PROVIDER_UTILS.buildSearchUrl(template, query);
+      }
       if (!template) {
         return '';
       }
@@ -11467,6 +11521,9 @@ async function getSearchSuggestions(query, options) {
     }
 
     function isInteractiveSiteSearchProvider(provider) {
+      if (SITE_SEARCH_PROVIDER_UTILS.isInteractiveSiteSearchProvider) {
+        return SITE_SEARCH_PROVIDER_UTILS.isInteractiveSiteSearchProvider(provider);
+      }
       return Boolean(
         provider &&
         provider.action === 'openAndSubmit' &&
@@ -11475,6 +11532,9 @@ async function getSearchSuggestions(query, options) {
     }
 
     function shouldRestrictInteractiveSiteSearchSuggestions(provider, query) {
+      if (SITE_SEARCH_PROVIDER_UTILS.shouldRestrictInteractiveSiteSearchSuggestions) {
+        return SITE_SEARCH_PROVIDER_UTILS.shouldRestrictInteractiveSiteSearchSuggestions(provider, query);
+      }
       return Boolean(
         isInteractiveSiteSearchProvider(provider) &&
         String(query || '').trim()
@@ -11526,6 +11586,11 @@ async function getSearchSuggestions(query, options) {
     }
 
     function mergeCustomProvidersLocal(baseItems, customItems) {
+      if (SITE_SEARCH_PROVIDER_UTILS.mergeCustomProviders) {
+        return SITE_SEARCH_PROVIDER_UTILS.mergeCustomProviders(baseItems, customItems, {
+          skipDisabledCustom: true
+        });
+      }
       const merged = [];
       const seen = new Set();
       (customItems || []).forEach((item) => {
@@ -11654,6 +11719,9 @@ async function getSearchSuggestions(query, options) {
     }
 
     function getProviderHost(provider) {
+      if (SITE_SEARCH_PROVIDER_UTILS.getProviderHost) {
+        return SITE_SEARCH_PROVIDER_UTILS.getProviderHost(provider);
+      }
       if (!provider || !provider.template) {
         return '';
       }
@@ -11666,6 +11734,9 @@ async function getSearchSuggestions(query, options) {
     }
 
     function suggestionMatchesProvider(suggestion, provider) {
+      if (SITE_SEARCH_PROVIDER_UTILS.suggestionMatchesProvider) {
+        return SITE_SEARCH_PROVIDER_UTILS.suggestionMatchesProvider(suggestion, provider);
+      }
       if (!suggestion || !provider || !suggestion.url) {
         return false;
       }
@@ -11698,6 +11769,9 @@ async function getSearchSuggestions(query, options) {
     }
 
     function providerMatchesSuggestion(provider, suggestion) {
+      if (SITE_SEARCH_PROVIDER_UTILS.providerMatchesSuggestion) {
+        return SITE_SEARCH_PROVIDER_UTILS.providerMatchesSuggestion(provider, suggestion);
+      }
       if (!provider || !suggestion) {
         return false;
       }
@@ -11722,6 +11796,9 @@ async function getSearchSuggestions(query, options) {
     }
 
     function findProviderForSuggestionMatch(suggestion, providers) {
+      if (SITE_SEARCH_PROVIDER_UTILS.findProviderForSuggestionMatch) {
+        return SITE_SEARCH_PROVIDER_UTILS.findProviderForSuggestionMatch(suggestion, providers);
+      }
       if (!suggestion) {
         return null;
       }
@@ -11733,6 +11810,9 @@ async function getSearchSuggestions(query, options) {
     }
 
     function findSiteSearchProviderByKey(trigger, providers) {
+      if (SITE_SEARCH_PROVIDER_UTILS.findSiteSearchProviderByKey) {
+        return SITE_SEARCH_PROVIDER_UTILS.findSiteSearchProviderByKey(trigger, providers);
+      }
       const key = String(trigger || '').toLowerCase();
       if (!key) {
         return null;
@@ -11741,6 +11821,9 @@ async function getSearchSuggestions(query, options) {
     }
 
     function findSiteSearchProvider(trigger, providers) {
+      if (SITE_SEARCH_PROVIDER_UTILS.findSiteSearchProvider) {
+        return SITE_SEARCH_PROVIDER_UTILS.findSiteSearchProvider(trigger, providers);
+      }
       const key = String(trigger || '').toLowerCase();
       if (!key) {
         return null;
@@ -11756,6 +11839,9 @@ async function getSearchSuggestions(query, options) {
     }
 
     function findSiteSearchProviderByInput(input, providers) {
+      if (SITE_SEARCH_PROVIDER_UTILS.findSiteSearchProviderByInput) {
+        return SITE_SEARCH_PROVIDER_UTILS.findSiteSearchProviderByInput(input, providers);
+      }
       const raw = String(input || '').trim();
       if (!raw) {
         return null;
@@ -11791,6 +11877,9 @@ async function getSearchSuggestions(query, options) {
     }
 
     function getInlineSiteSearchCandidate(input, providers) {
+      if (SITE_SEARCH_PROVIDER_UTILS.getInlineSiteSearchCandidate) {
+        return SITE_SEARCH_PROVIDER_UTILS.getInlineSiteSearchCandidate(input, providers);
+      }
       const raw = String(input || '').trim();
       if (!raw) {
         return null;
@@ -11875,6 +11964,9 @@ async function getSearchSuggestions(query, options) {
     }
 
     function getProviderHost(provider) {
+      if (SITE_SEARCH_PROVIDER_UTILS.getProviderHost) {
+        return SITE_SEARCH_PROVIDER_UTILS.getProviderHost(provider);
+      }
       if (!provider || !provider.template) {
         return '';
       }
@@ -11887,6 +11979,9 @@ async function getSearchSuggestions(query, options) {
     }
 
     function getSuggestionHost(suggestion) {
+      if (SITE_SEARCH_PROVIDER_UTILS.getSuggestionHost) {
+        return SITE_SEARCH_PROVIDER_UTILS.getSuggestionHost(suggestion);
+      }
       if (!suggestion || !suggestion.url) {
         return '';
       }
@@ -11898,6 +11993,9 @@ async function getSearchSuggestions(query, options) {
     }
 
     function hostsMatch(a, b) {
+      if (SITE_SEARCH_PROVIDER_UTILS.hostsMatch) {
+        return SITE_SEARCH_PROVIDER_UTILS.hostsMatch(a, b);
+      }
       if (!a || !b) {
         return false;
       }
@@ -11905,6 +12003,9 @@ async function getSearchSuggestions(query, options) {
     }
 
     function providerMatchesInputPrefix(provider, input) {
+      if (SITE_SEARCH_PROVIDER_UTILS.providerMatchesInputPrefix) {
+        return SITE_SEARCH_PROVIDER_UTILS.providerMatchesInputPrefix(provider, input);
+      }
       const needle = String(input || '').toLowerCase();
       if (!needle || !provider) {
         return false;
@@ -11931,6 +12032,11 @@ async function getSearchSuggestions(query, options) {
     }
 
     function getSiteSearchTriggerCandidate(input, providers, topSiteMatch) {
+      if (SITE_SEARCH_PROVIDER_UTILS.getSiteSearchTriggerCandidate) {
+        return SITE_SEARCH_PROVIDER_UTILS.getSiteSearchTriggerCandidate(input, providers, topSiteMatch, {
+          matchesTopSitePrefix
+        });
+      }
       const trimmed = String(input || '').trim();
       if (!trimmed || /\s/.test(trimmed)) {
         return null;

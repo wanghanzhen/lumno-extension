@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 
 const storageKeys = require('../src/shared/storage/keys.js');
 const searchProtocol = require('../src/shared/search/protocol.js');
+const searchQueryContext = require('../src/shared/search/query-context.js');
 const searchEngines = require('../src/shared/search/engines.js');
 const searchFavicons = require('../src/shared/search/favicons.js');
 const siteSearchProviders = require('../src/shared/search/site-search-providers.js');
@@ -29,6 +30,49 @@ function run() {
     searchProtocol.normalizeSearchSuggestionsMode('ai'),
     'classic',
     'unknown protocol modes should fall back to classic'
+  );
+
+  const queryContext = searchQueryContext.buildSearchQueryContext('github repo', {
+    normalizePinyinQuery: () => '',
+    pathIntentTerms: ['path', 'route'],
+    settingsIntentTerms: ['settings'],
+    informationalTerms: ['what']
+  });
+
+  assert.deepEqual(
+    queryContext.queryTerms,
+    ['github repo', 'github', 'repo'],
+    'shared query context should preserve whole-query and tokenized terms'
+  );
+
+  assert.equal(
+    queryContext.intentType,
+    'object',
+    'two-word query should classify as object intent in the shared helper'
+  );
+
+  assert.equal(
+    searchQueryContext.classifySearchIntent('docs/path', ['docs', 'path'], {
+      pathIntentTerms: ['path']
+    }),
+    'path',
+    'shared query intent classification should preserve path intent detection'
+  );
+
+  assert.equal(
+    searchQueryContext.collectSearchMatches(
+      [
+        { title: 'GitHub Repo', url: 'https://github.com/openai/gpt-5' },
+        { title: 'Blocked Repo', url: 'https://blocked.example.com/repo' }
+      ],
+      queryContext,
+      {
+        matchesTitlePinyin: () => false,
+        isBlocked: (item) => String(item.url || '').includes('blocked.example.com')
+      }
+    ).length,
+    1,
+    'shared search match collection should reuse text matching and blacklist filtering'
   );
 
   assert.equal(
@@ -87,6 +131,107 @@ function run() {
     ),
     'Docs',
     'custom providers should keep their explicit name'
+  );
+
+  assert.equal(
+    siteSearchProviders.normalizeSiteSearchTemplate('https://example.com/search?q={s}'),
+    'https://example.com/search?q={query}',
+    'site-search templates should normalize legacy placeholder syntax'
+  );
+
+  assert.deepEqual(
+    siteSearchProviders.normalizeSiteSearchProvider({
+      key: 'gh',
+      aliases: ['github'],
+      name: 'GitHub',
+      template: 'https://github.com/search?q={searchTerms}',
+      action: '',
+      submitStrategy: ''
+    }),
+    {
+      key: 'gh',
+      aliases: ['github'],
+      name: 'GitHub',
+      template: 'https://github.com/search?q={query}',
+      action: '',
+      submitStrategy: '',
+      icon: '',
+      iconUrl: '',
+      disabled: false
+    },
+    'site-search providers should be normalized by the shared helper'
+  );
+
+  assert.deepEqual(
+    siteSearchProviders.mergeCustomProviders(
+      [
+        { key: 'gh', name: 'GitHub' },
+        { key: 'zh', name: 'Zhihu' }
+      ],
+      [
+        { key: 'gh', name: 'GitHub Enterprise' },
+        { key: 'rd', name: 'Reddit' }
+      ]
+    ).map((item) => item.key),
+    ['gh', 'rd', 'zh'],
+    'custom providers should override builtins by key during merge'
+  );
+
+  assert.equal(
+    siteSearchProviders.findSiteSearchProvider('github', [
+      { key: 'gh', aliases: ['github'] },
+      { key: 'zh', aliases: ['zhihu'] }
+    ]).key,
+    'gh',
+    'provider alias lookup should be handled in the shared helper'
+  );
+
+  assert.equal(
+    siteSearchProviders.findSiteSearchProviderByInput('github.com issues', [
+      { key: 'gh', aliases: ['github'], template: 'https://github.com/search?q={query}' },
+      { key: 'zh', aliases: ['zhihu'], template: 'https://www.zhihu.com/search?q={query}' }
+    ]).key,
+    'gh',
+    'host-like input should resolve to the matching provider'
+  );
+
+  assert.deepEqual(
+    siteSearchProviders.getInlineSiteSearchCandidate('gh lumno extension', [
+      { key: 'gh', aliases: ['github'], template: 'https://github.com/search?q={query}' }
+    ]),
+    {
+      provider: { key: 'gh', aliases: ['github'], template: 'https://github.com/search?q={query}' },
+      query: 'lumno extension'
+    },
+    'inline site-search candidate parsing should be shared'
+  );
+
+  assert.equal(
+    siteSearchProviders.findProviderForSuggestionMatch(
+      { type: 'topSite', title: 'GitHub', url: 'https://github.com/openai/gpt-5' },
+      [
+        { key: 'gh', aliases: ['github'], name: 'GitHub', template: 'https://github.com/search?q={query}' }
+      ]
+    ).key,
+    'gh',
+    'provider matching against suggestions should be shared'
+  );
+
+  assert.equal(
+    siteSearchProviders.getSiteSearchTriggerCandidate(
+      'gi',
+      [
+        { key: 'gh', aliases: ['github'], name: 'GitHub', template: 'https://github.com/search?q={query}' },
+        { key: 'zh', aliases: ['zhihu'], name: 'Zhihu', template: 'https://www.zhihu.com/search?q={query}' }
+      ],
+      { type: 'topSite', title: 'GitHub', url: 'https://github.com/' },
+      {
+        matchesTopSitePrefix: (suggestion, input) =>
+          suggestion.url === 'https://github.com/' && input === 'gi'
+      }
+    ).key,
+    'gh',
+    'top-site assisted provider trigger matching should come from the shared helper'
   );
 }
 

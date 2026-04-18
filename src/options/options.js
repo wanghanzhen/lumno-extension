@@ -3044,6 +3044,9 @@
   refreshSyncStatus();
 
   function normalizeSiteSearchTemplate(template) {
+    if (SITE_SEARCH_PROVIDER_UTILS.normalizeSiteSearchTemplate) {
+      return SITE_SEARCH_PROVIDER_UTILS.normalizeSiteSearchTemplate(template);
+    }
     if (!template) {
       return '';
     }

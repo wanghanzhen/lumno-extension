@@ -7930,6 +7930,9 @@
   }
 
   function buildSearchUrl(template, query) {
+    if (SITE_SEARCH_PROVIDER_UTILS.buildSearchUrl) {
+      return SITE_SEARCH_PROVIDER_UTILS.buildSearchUrl(template, query);
+    }
     if (!template) {
       return '';
     }
@@ -7937,6 +7940,9 @@
   }
 
   function isInteractiveSiteSearchProvider(provider) {
+    if (SITE_SEARCH_PROVIDER_UTILS.isInteractiveSiteSearchProvider) {
+      return SITE_SEARCH_PROVIDER_UTILS.isInteractiveSiteSearchProvider(provider);
+    }
     return Boolean(
       provider &&
       provider.action === 'openAndSubmit' &&
@@ -7945,6 +7951,9 @@
   }
 
   function shouldRestrictInteractiveSiteSearchSuggestions(provider, query) {
+    if (SITE_SEARCH_PROVIDER_UTILS.shouldRestrictInteractiveSiteSearchSuggestions) {
+      return SITE_SEARCH_PROVIDER_UTILS.shouldRestrictInteractiveSiteSearchSuggestions(provider, query);
+    }
     return Boolean(
       isInteractiveSiteSearchProvider(provider) &&
       String(query || '').trim()
@@ -7993,6 +8002,9 @@
   }
 
   function normalizeSiteSearchTemplate(template) {
+    if (SITE_SEARCH_PROVIDER_UTILS.normalizeSiteSearchTemplate) {
+      return SITE_SEARCH_PROVIDER_UTILS.normalizeSiteSearchTemplate(template);
+    }
     if (!template) {
       return '';
     }
@@ -8003,6 +8015,9 @@
   }
 
   function normalizeSiteSearchProvider(item) {
+    if (SITE_SEARCH_PROVIDER_UTILS.normalizeSiteSearchProvider) {
+      return SITE_SEARCH_PROVIDER_UTILS.normalizeSiteSearchProvider(item);
+    }
     if (!item || !item.key || !item.template) {
       return null;
     }
@@ -8023,6 +8038,9 @@
   }
 
   function mergeCustomProvidersLocal(baseItems, customItems) {
+    if (SITE_SEARCH_PROVIDER_UTILS.mergeCustomProviders) {
+      return SITE_SEARCH_PROVIDER_UTILS.mergeCustomProviders(baseItems, customItems);
+    }
     const merged = [];
     const seen = new Set();
     (customItems || []).forEach((item) => {
@@ -8105,6 +8123,9 @@
   }
 
   function findSiteSearchProvider(trigger, providers) {
+    if (SITE_SEARCH_PROVIDER_UTILS.findSiteSearchProvider) {
+      return SITE_SEARCH_PROVIDER_UTILS.findSiteSearchProvider(trigger, providers);
+    }
     const key = String(trigger || '').toLowerCase();
     if (!key) {
       return null;
@@ -8130,6 +8151,9 @@
   }
 
   function suggestionMatchesProvider(suggestion, provider) {
+    if (SITE_SEARCH_PROVIDER_UTILS.suggestionMatchesProvider) {
+      return SITE_SEARCH_PROVIDER_UTILS.suggestionMatchesProvider(suggestion, provider);
+    }
     if (!suggestion || !provider || !suggestion.url) {
       return false;
     }
@@ -8162,6 +8186,9 @@
   }
 
   function providerMatchesSuggestion(provider, suggestion) {
+    if (SITE_SEARCH_PROVIDER_UTILS.providerMatchesSuggestion) {
+      return SITE_SEARCH_PROVIDER_UTILS.providerMatchesSuggestion(provider, suggestion);
+    }
     if (!provider || !suggestion) {
       return false;
     }
@@ -8186,6 +8213,9 @@
   }
 
   function findProviderForSuggestionMatch(suggestion, providers) {
+    if (SITE_SEARCH_PROVIDER_UTILS.findProviderForSuggestionMatch) {
+      return SITE_SEARCH_PROVIDER_UTILS.findProviderForSuggestionMatch(suggestion, providers);
+    }
     if (!suggestion) {
       return null;
     }
@@ -8197,6 +8227,9 @@
   }
 
   function findSiteSearchProviderByKey(trigger, providers) {
+    if (SITE_SEARCH_PROVIDER_UTILS.findSiteSearchProviderByKey) {
+      return SITE_SEARCH_PROVIDER_UTILS.findSiteSearchProviderByKey(trigger, providers);
+    }
     const key = String(trigger || '').toLowerCase();
     if (!key) {
       return null;
@@ -8205,6 +8238,9 @@
   }
 
   function findSiteSearchProviderByInput(input, providers) {
+    if (SITE_SEARCH_PROVIDER_UTILS.findSiteSearchProviderByInput) {
+      return SITE_SEARCH_PROVIDER_UTILS.findSiteSearchProviderByInput(input, providers);
+    }
     const raw = String(input || '').trim();
     if (!raw) {
       return null;
@@ -8240,6 +8276,9 @@
   }
 
   function getInlineSiteSearchCandidate(input, providers) {
+    if (SITE_SEARCH_PROVIDER_UTILS.getInlineSiteSearchCandidate) {
+      return SITE_SEARCH_PROVIDER_UTILS.getInlineSiteSearchCandidate(input, providers);
+    }
     const raw = String(input || '').trim();
     if (!raw) {
       return null;
@@ -8324,6 +8363,9 @@
   }
 
   function getProviderHost(provider) {
+    if (SITE_SEARCH_PROVIDER_UTILS.getProviderHost) {
+      return SITE_SEARCH_PROVIDER_UTILS.getProviderHost(provider);
+    }
     if (!provider || !provider.template) {
       return '';
     }
@@ -8336,6 +8378,9 @@
   }
 
   function getSuggestionHost(suggestion) {
+    if (SITE_SEARCH_PROVIDER_UTILS.getSuggestionHost) {
+      return SITE_SEARCH_PROVIDER_UTILS.getSuggestionHost(suggestion);
+    }
     if (!suggestion || !suggestion.url) {
       return '';
     }
@@ -8347,6 +8392,9 @@
   }
 
   function hostsMatch(a, b) {
+    if (SITE_SEARCH_PROVIDER_UTILS.hostsMatch) {
+      return SITE_SEARCH_PROVIDER_UTILS.hostsMatch(a, b);
+    }
     if (!a || !b) {
       return false;
     }
@@ -8354,6 +8402,9 @@
   }
 
   function providerMatchesInputPrefix(provider, input) {
+    if (SITE_SEARCH_PROVIDER_UTILS.providerMatchesInputPrefix) {
+      return SITE_SEARCH_PROVIDER_UTILS.providerMatchesInputPrefix(provider, input);
+    }
     const needle = String(input || '').toLowerCase();
     if (!needle || !provider) {
       return false;
@@ -8380,6 +8431,11 @@
   }
 
   function getSiteSearchTriggerCandidate(input, providers, topSiteMatch) {
+    if (SITE_SEARCH_PROVIDER_UTILS.getSiteSearchTriggerCandidate) {
+      return SITE_SEARCH_PROVIDER_UTILS.getSiteSearchTriggerCandidate(input, providers, topSiteMatch, {
+        matchesTopSitePrefix
+      });
+    }
     const trimmed = String(input || '').trim();
     if (!trimmed || /\s/.test(trimmed)) {
       return null;
