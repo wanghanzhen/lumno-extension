@@ -168,6 +168,79 @@ function run() {
     ['来源：浏览历史', '标题首字母匹配', '最近 24 小时访问'],
     'shared suggestion reasons should stay deterministic with injected ranking helpers'
   );
+
+  assert.equal(
+    searchSuggestions.getSearchSourceAdjustment('bookmark', 'navigation'),
+    24,
+    'shared source adjustment should keep bookmark priority for navigation queries'
+  );
+
+  assert.equal(
+    searchSuggestions.getSearchSourceAdjustment('history', 'path'),
+    18,
+    'shared source adjustment should keep history priority for path queries'
+  );
+
+  const relevanceScore = searchSuggestions.calculateSearchRelevanceScore(
+    {
+      title: 'Lumno Extension Docs',
+      url: 'https://docs.example.com/guides/lumno-extension',
+      lastVisitTime: now - (1000 * 60 * 60),
+      visitCount: 8,
+      typedCount: 2
+    },
+    'bookmark',
+    {
+      queryLower: 'lumno extension',
+      queryTerms: ['lumno extension', 'lumno', 'extension'],
+      normalizedPinyinQuery: '',
+      intentType: 'object',
+      hasSettingsIntent: false
+    },
+    {
+      now,
+      normalizeHost: (host) => String(host || '').toLowerCase(),
+      splitSearchTerms: (value) => String(value || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean),
+      getTitlePinyinMatchScore: () => ({ score: 0 }),
+      shouldBlockFaviconForHost: (host) => host === 'docs.example.com',
+      getSuggestionCategoryAdjustment: () => 6,
+      getDirectNavigationAdjustment: () => 4,
+      getOwnExtensionUtilityPenalty: () => 0
+    }
+  );
+
+  assert.ok(
+    Math.abs(relevanceScore - 342.67970000576923) < 1e-9,
+    'shared relevance scoring should preserve text, behavior, and injected adjustment weights'
+  );
+
+  assert.equal(
+    searchSuggestions.calculateSearchRelevanceScore(
+      {
+        title: 'Dashboard',
+        url: 'https://internal.example.com/app'
+      },
+      'history',
+      {
+        queryLower: 'lumno',
+        queryTerms: ['lumno'],
+        normalizedPinyinQuery: '',
+        intentType: 'brand',
+        hasSettingsIntent: false
+      },
+      {
+        normalizeHost: (host) => String(host || '').toLowerCase(),
+        splitSearchTerms: (value) => String(value || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean),
+        getTitlePinyinMatchScore: () => ({ score: 0 }),
+        shouldBlockFaviconForHost: () => false,
+        getSuggestionCategoryAdjustment: () => 0,
+        getDirectNavigationAdjustment: () => 0,
+        getOwnExtensionUtilityPenalty: () => 0
+      }
+    ),
+    0,
+    'shared relevance scoring should return zero when there is no text match signal'
+  );
 }
 
 run();

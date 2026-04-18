@@ -6087,6 +6087,9 @@ function classifySearchIntent(query, queryTerms) {
 }
 
 function getSearchSourceAdjustment(sourceType, intentType) {
+  if (SEARCH_SUGGESTION_UTILS.getSearchSourceAdjustment) {
+    return SEARCH_SUGGESTION_UTILS.getSearchSourceAdjustment(sourceType, intentType);
+  }
   const source = String(sourceType || '');
   const intent = String(intentType || 'object');
 
@@ -6432,6 +6435,17 @@ function buildSearchBrandDirectSuggestion(candidates, context) {
 }
 
 function calculateSearchRelevanceScore(item, sourceType, context) {
+  if (SEARCH_SUGGESTION_UTILS.calculateSearchRelevanceScore) {
+    return SEARCH_SUGGESTION_UTILS.calculateSearchRelevanceScore(item, sourceType, context, {
+      normalizeHost,
+      splitSearchTerms,
+      getTitlePinyinMatchScore,
+      shouldBlockFaviconForHost,
+      getSuggestionCategoryAdjustment: getSearchSuggestionCategoryAdjustment,
+      getDirectNavigationAdjustment: getSearchDirectNavigationAdjustment,
+      getOwnExtensionUtilityPenalty
+    });
+  }
   const titleLower = item.title ? item.title.toLowerCase() : '';
   const urlLower = item.url.toLowerCase();
   let hostname = '';
