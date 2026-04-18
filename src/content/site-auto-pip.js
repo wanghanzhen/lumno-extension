@@ -848,7 +848,7 @@
     }
     const script = document.createElement("script");
     script.id = PAGE_BRIDGE_SCRIPT_ID;
-    script.src = runtime.getURL("youtube-auto-pip-page.js");
+    script.src = runtime.getURL("src/content/youtube-auto-pip-page.js");
     script.async = false;
     const target = document.documentElement || document.head || document.body;
     if (!target) {

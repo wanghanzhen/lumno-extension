@@ -282,6 +282,8 @@
   const SITE_SEARCH_DISABLED_STORAGE_KEY = '_x_extension_site_search_disabled_2024_unique_';
   const SEARCH_BLACKLIST_STORAGE_KEY = '_x_extension_search_blacklist_2026_unique_';
   const BLACKLIST_UTILS = globalThis.LumnoBlacklistUtils || {};
+  const STORAGE_MIGRATION_UTILS = globalThis.LumnoStorageMigration || {};
+  const SETTINGS_UTILS = globalThis.LumnoSettings || {};
   const DEFAULT_SEARCH_ENGINE_STORAGE_KEY = '_x_extension_default_search_engine_2024_unique_';
   const SYNC_META_KEY = '_x_extension_sync_meta_2024_unique_';
   const SYNC_KEYS = [
@@ -310,7 +312,6 @@
   const DEBUG_DUPLICATE_CUSTOM_KEY = 'dup';
   const isMacPlatform = String((navigator && navigator.platform) || '').toLowerCase().includes('mac');
   const FORCE_TEXT_KEYCAPS_ON_MAC = false;
-  const FORCE_OVERLAY_TAB_QUICK_SWITCH_ENABLED = true;
   const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
   let mediaListenerAttached = false;
   let defaultSiteSearchProviders = [];
@@ -765,16 +766,28 @@
       return;
     }
     chrome.storage.local.get(keys, (localResult) => {
-      const hasLocal = keys.some((key) => typeof localResult[key] !== 'undefined');
-      if (!hasLocal) {
+      if (chrome.runtime && chrome.runtime.lastError) {
+        console.warn('Lumno: failed to read local storage for migration.', chrome.runtime.lastError.message || chrome.runtime.lastError);
         return;
       }
       storageArea.get(keys, (syncResult) => {
-        const hasSync = keys.some((key) => typeof syncResult[key] !== 'undefined');
-        if (hasSync) {
+        if (chrome.runtime && chrome.runtime.lastError) {
+          console.warn('Lumno: failed to read sync storage for migration.', chrome.runtime.lastError.message || chrome.runtime.lastError);
           return;
         }
-        storageArea.set(localResult);
+        const payload = STORAGE_MIGRATION_UTILS.buildMigrationPayload
+          ? STORAGE_MIGRATION_UTILS.buildMigrationPayload(keys, localResult, syncResult, {
+            skipKeys: [LANGUAGE_MESSAGES_STORAGE_KEY]
+          })
+          : null;
+        if (!payload || Object.keys(payload).length === 0) {
+          return;
+        }
+        storageArea.set(payload, () => {
+          if (chrome.runtime && chrome.runtime.lastError) {
+            console.warn('Lumno: failed to migrate local settings into sync storage.', chrome.runtime.lastError.message || chrome.runtime.lastError);
+          }
+        });
       });
     });
   }
@@ -1170,8 +1183,8 @@
   }
 
   function normalizeOverlayTabQuickSwitch(value) {
-    if (FORCE_OVERLAY_TAB_QUICK_SWITCH_ENABLED) {
-      return true;
+    if (SETTINGS_UTILS.normalizeOverlayTabQuickSwitch) {
+      return SETTINGS_UTILS.normalizeOverlayTabQuickSwitch(value);
     }
     if (value === 'switchTabFirst') {
       return true;
@@ -2201,7 +2214,7 @@
 
   function loadLocaleMessages(locale) {
     const normalized = normalizeLocale(locale);
-    const localePath = chrome.runtime.getURL(`_locales/${normalized}/messages.json`);
+    const localePath = chrome.runtime.getURL(`public/_locales/${normalized}/messages.json`);
     const fetchFromBackground = () => new Promise((resolve) => {
       if (!chrome || !chrome.runtime || !chrome.runtime.sendMessage) {
         resolve({});
@@ -4332,7 +4345,7 @@
   }
 
   function loadDefaultSiteSearchProviders() {
-    const localUrl = chrome.runtime.getURL('assets/data/site-search.json');
+    const localUrl = chrome.runtime.getURL('public/assets/data/site-search.json');
     return fetch(localUrl)
       .then((resp) => resp.json())
       .then((data) => {

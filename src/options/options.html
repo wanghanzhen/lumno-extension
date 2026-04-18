@@ -4,8 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title data-i18n="options_page_title">Lumno 设置</title>
-    <link rel="stylesheet" href="assets/fonts/open-sans/open-sans.css" />
-    <link rel="stylesheet" href="assets/remixicon/fonts/remixicon.css" />
+    <link rel="stylesheet" href="../../public/assets/fonts/open-sans/open-sans.css" />
+    <link rel="stylesheet" href="../../public/assets/remixicon/fonts/remixicon.css" />
     <!-- Thanks to the Remix Icon project; this extension uses its icon set: https://remixicon.com/ -->
     <style>
       html {
@@ -86,7 +86,7 @@
         transform: translateX(-50%);
         width: min(900px, calc(100vw - 40px));
         height: 332px;
-        background: url("assets/images/settings-bg-light.png") center top / contain no-repeat;
+        background: url("../../public/assets/images/settings-bg-light.png") center top / contain no-repeat;
         border-radius: 24px;
         z-index: 0;
         pointer-events: none;
@@ -94,7 +94,7 @@
       }
       body[data-theme="dark"] .settings-bg-light {
         opacity: 1;
-        background-image: url("assets/images/settings-bg-dark.png");
+        background-image: url("../../public/assets/images/settings-bg-dark.png");
       }
       body[data-theme="light"] {
         background: #f1f5f9;
@@ -2635,7 +2635,7 @@
           <div class="_x_extension_theme_picker_2024_unique_ _x_extension_theme_gallery_2026_unique_" role="group" aria-label="主题模式" data-i18n-aria-label="settings_theme_title">
             <button class="_x_extension_theme_option_2024_unique_" data-mode="system" data-active="true" aria-pressed="true" type="button">
               <span class="_x_extension_theme_preview_2026_unique_" data-preview-mode="system">
-                <img class="_x_extension_theme_preview_img_2026_unique_" src="assets/images/system.svg" alt="" aria-hidden="true" />
+                <img class="_x_extension_theme_preview_img_2026_unique_" src="../../public/assets/images/system.svg" alt="" aria-hidden="true" />
                 <span class="_x_extension_theme_check_2026_unique_" aria-hidden="true">
                   <i class="ri-icon ri-check-line" aria-hidden="true"></i>
                 </span>
@@ -2644,7 +2644,7 @@
             </button>
             <button class="_x_extension_theme_option_2024_unique_" data-mode="light" data-active="false" aria-pressed="false" type="button">
               <span class="_x_extension_theme_preview_2026_unique_" data-preview-mode="light">
-                <img class="_x_extension_theme_preview_img_2026_unique_" src="assets/images/light.svg" alt="" aria-hidden="true" />
+                <img class="_x_extension_theme_preview_img_2026_unique_" src="../../public/assets/images/light.svg" alt="" aria-hidden="true" />
                 <span class="_x_extension_theme_check_2026_unique_" aria-hidden="true">
                   <i class="ri-icon ri-check-line" aria-hidden="true"></i>
                 </span>
@@ -2653,7 +2653,7 @@
             </button>
             <button class="_x_extension_theme_option_2024_unique_" data-mode="dark" data-active="false" aria-pressed="false" type="button">
               <span class="_x_extension_theme_preview_2026_unique_" data-preview-mode="dark">
-                <img class="_x_extension_theme_preview_img_2026_unique_" src="assets/images/dark.svg" alt="" aria-hidden="true" />
+                <img class="_x_extension_theme_preview_img_2026_unique_" src="../../public/assets/images/dark.svg" alt="" aria-hidden="true" />
                 <span class="_x_extension_theme_check_2026_unique_" aria-hidden="true">
                   <i class="ri-icon ri-check-line" aria-hidden="true"></i>
                 </span>
@@ -2913,7 +2913,9 @@
       </div>
     </div>
     -->
-    <script src="blacklist-utils.js"></script>
+    <script src="../shared/blacklist-utils.js"></script>
+    <script src="../shared/storage/migration.js"></script>
+    <script src="../shared/settings/overlay-tab-priority.js"></script>
     <script src="options.js"></script>
   </body>
 </html>

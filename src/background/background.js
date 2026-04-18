@@ -1,12 +1,30 @@
 
 try {
-  importScripts('blacklist-utils.js');
+  importScripts(chrome.runtime.getURL('src/shared/blacklist-utils.js'));
 } catch (error) {
   console.warn('Lumno: failed to load blacklist utils.', error);
 }
 
 try {
-  importScripts('assets/vendor/pinyin-pro.js');
+  importScripts(chrome.runtime.getURL('src/shared/storage/migration.js'));
+} catch (error) {
+  console.warn('Lumno: failed to load storage migration utils.', error);
+}
+
+try {
+  importScripts(chrome.runtime.getURL('src/shared/settings/overlay-tab-priority.js'));
+} catch (error) {
+  console.warn('Lumno: failed to load settings utils.', error);
+}
+
+try {
+  importScripts(chrome.runtime.getURL('src/shared/search/suggestions.js'));
+} catch (error) {
+  console.warn('Lumno: failed to load search suggestion utils.', error);
+}
+
+try {
+  importScripts(chrome.runtime.getURL('public/assets/vendor/pinyin-pro.js'));
 } catch (error) {
   console.warn('Lumno: failed to load pinyin support.', error);
 }
@@ -428,7 +446,7 @@ function getExtensionDetailsUrl() {
 }
 
 function buildNewtabFallbackUrl(options) {
-  const newtabUrl = new URL(chrome.runtime.getURL('newtab.html'));
+  const newtabUrl = new URL(chrome.runtime.getURL('src/newtab/newtab.html'));
   newtabUrl.searchParams.set('focus', '1');
   if (options && options.notice === 'file-access') {
     newtabUrl.searchParams.set('notice', 'file-access');
@@ -472,7 +490,7 @@ function isLumnoNewtabUrl(url) {
   if (!value || !chrome || !chrome.runtime || typeof chrome.runtime.getURL !== 'function') {
     return false;
   }
-  const lumnoNewtabPrefix = chrome.runtime.getURL('newtab.html');
+  const lumnoNewtabPrefix = chrome.runtime.getURL('src/newtab/newtab.html');
   return value === lumnoNewtabPrefix || value.startsWith(`${lumnoNewtabPrefix}?`);
 }
 
@@ -503,7 +521,7 @@ function getOwnExtensionFaviconUrl() {
   if (!chrome || !chrome.runtime || typeof chrome.runtime.getURL !== 'function') {
     return '';
   }
-  return chrome.runtime.getURL('assets/images/lumno.png');
+  return chrome.runtime.getURL('public/assets/images/lumno.png');
 }
 
 function shouldRecoverFromCommandNewtab(activeTab, source) {
@@ -624,7 +642,7 @@ function requestFocusVisibleNewtabInput(source, tabId) {
 function openExtensionOptionsPage(callback) {
   const done = typeof callback === 'function' ? callback : () => {};
   const fallbackOpen = () => {
-    chrome.tabs.create({ url: chrome.runtime.getURL('options.html') }, () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL('src/options/options.html') }, () => {
       done(!(chrome.runtime && chrome.runtime.lastError));
     });
   };
@@ -755,6 +773,9 @@ const localStorageArea = (chrome && chrome.storage && chrome.storage.local)
 const storageAreaName = storageArea
   ? (storageArea === (chrome && chrome.storage ? chrome.storage.sync : null) ? 'sync' : 'local')
   : null;
+const STORAGE_MIGRATION_UTILS = globalThis.LumnoStorageMigration || {};
+const SEARCH_SUGGESTION_UTILS = globalThis.LumnoSearchSuggestions || {};
+const SETTINGS_UTILS = globalThis.LumnoSettings || {};
 const RESTRICTED_ACTION_STORAGE_KEY = '_x_extension_restricted_action_2024_unique_';
 const OVERLAY_TAB_PRIORITY_STORAGE_KEY = '_x_extension_overlay_tab_priority_2024_unique_';
 const TAB_RANK_SCORE_DEBUG_STORAGE_KEY = '_x_extension_tab_rank_score_debug_2026_unique_';
@@ -1472,16 +1493,26 @@ function migrateStorageIfNeeded(keys) {
     return;
   }
   chrome.storage.local.get(keys, (localResult) => {
-    const hasLocal = keys.some((key) => typeof localResult[key] !== 'undefined');
-    if (!hasLocal) {
+    if (chrome.runtime && chrome.runtime.lastError) {
+      console.warn('Lumno: failed to read local storage for migration.', chrome.runtime.lastError.message || chrome.runtime.lastError);
       return;
     }
     storageArea.get(keys, (syncResult) => {
-      const hasSync = keys.some((key) => typeof syncResult[key] !== 'undefined');
-      if (hasSync) {
+      if (chrome.runtime && chrome.runtime.lastError) {
+        console.warn('Lumno: failed to read sync storage for migration.', chrome.runtime.lastError.message || chrome.runtime.lastError);
         return;
       }
-      storageArea.set(localResult);
+      const payload = STORAGE_MIGRATION_UTILS.buildMigrationPayload
+        ? STORAGE_MIGRATION_UTILS.buildMigrationPayload(keys, localResult, syncResult)
+        : null;
+      if (!payload || Object.keys(payload).length === 0) {
+        return;
+      }
+      storageArea.set(payload, () => {
+        if (chrome.runtime && chrome.runtime.lastError) {
+          console.warn('Lumno: failed to migrate local settings into sync storage.', chrome.runtime.lastError.message || chrome.runtime.lastError);
+        }
+      });
     });
   });
 }
@@ -1634,14 +1665,14 @@ function openOverlayOnTab(activeTab, tabs, source) {
     openNewtabFallbackForUrl(activeUrl);
     return;
   }
-  logHotkeyDebug('inject-start', { tabId: activeTab.id, file: 'input-ui.js', source: source || '' });
+  logHotkeyDebug('inject-start', { tabId: activeTab.id, file: 'src/overlay/input-ui.js', source: source || '' });
   chrome.scripting.executeScript({
     target: {tabId: activeTab.id},
-    files: ['input-ui.js']
+    files: ['src/overlay/input-ui.js']
   }, function() {
     if (chrome.runtime.lastError) {
       logHotkeyDebug('inject-failed', {
-        step: 'input-ui.js',
+        step: 'src/overlay/input-ui.js',
         tabId: activeTab.id,
         error: chrome.runtime.lastError.message || 'unknown',
         source: source || ''
@@ -1803,11 +1834,11 @@ function openDocumentPipPickerOnTab(activeTab, source) {
   const injectAndInvoke = (invokeMode) => {
     chrome.scripting.executeScript({
       target: { tabId: activeTab.id },
-      files: ['document-pip-picker.js']
+      files: ['src/content/document-pip-picker.js']
     }, () => {
       if (chrome.runtime.lastError) {
         logHotkeyDebug('document-pip-inject-failed', {
-          step: 'document-pip-picker.js',
+          step: 'src/content/document-pip-picker.js',
           tabId: activeTab.id,
           error: chrome.runtime.lastError.message || 'unknown',
           source: source || ''
@@ -3188,10 +3219,20 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     return true;
   } else if (request.action === 'getSearchSuggestions') {
     const query = request.query;
-    getSearchSuggestions(query).then(suggestions => {
-      sendResponse({ suggestions: suggestions });
+    const mode = normalizeSearchSuggestionsMode(request.mode);
+    getSearchSuggestions(query, {
+      mode: mode,
+      context: request.context
+    }).then(suggestions => {
+      sendResponse({
+        mode: mode,
+        suggestions: suggestions
+      });
     }).catch(() => {
-      sendResponse({ suggestions: [] });
+      sendResponse({
+        mode: mode,
+        suggestions: []
+      });
     });
     return true; // Keep the message channel open for async response
   } else if (request.action === 'deleteHistoryUrl') {
@@ -3273,7 +3314,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     return true;
   } else if (request.action === 'getLocaleMessages') {
     const locale = normalizeLocaleForMessages(request.locale);
-    const localePath = chrome.runtime.getURL(`_locales/${locale}/messages.json`);
+    const localePath = chrome.runtime.getURL(`public/_locales/${locale}/messages.json`);
     fetch(localePath)
       .then((response) => response.json())
       .then((messages) => {
@@ -3365,7 +3406,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     });
     return true;
   } else if (request.action === 'openNewTab') {
-    const newtabUrl = chrome.runtime.getURL('newtab.html?focus=1');
+    const newtabUrl = chrome.runtime.getURL('src/newtab/newtab.html?focus=1');
     chrome.tabs.create({ url: newtabUrl }, () => {
       sendResponse({ ok: !(chrome.runtime && chrome.runtime.lastError) });
     });
@@ -3581,7 +3622,7 @@ function getGoogleFaviconUrl(hostname) {
   }
   if (normalized === 'lumno.kubai.design') {
     return (chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function')
-      ? chrome.runtime.getURL('assets/images/lumno.png')
+      ? chrome.runtime.getURL('public/assets/images/lumno.png')
       : 'https://lumno.kubai.design/favicon.png';
   }
   return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(normalized)}&sz=${FAVICON_GOOGLE_SIZE}`;
@@ -4260,7 +4301,7 @@ function getKnownThemedFaviconCandidates(hostname, preferredTheme) {
   }
   if (host === 'lumno.kubai.design') {
     const lumnoIconUrl = (chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function')
-      ? chrome.runtime.getURL('assets/images/lumno.png')
+      ? chrome.runtime.getURL('public/assets/images/lumno.png')
       : 'https://lumno.kubai.design/favicon.png';
     return [
       { url: lumnoIconUrl, score: 58 }
@@ -4889,7 +4930,7 @@ function loadSiteSearchProviders() {
   if (siteSearchPromise) {
     return siteSearchPromise;
   }
-  const localUrl = chrome.runtime.getURL('assets/data/site-search.json');
+  const localUrl = chrome.runtime.getURL('public/assets/data/site-search.json');
   siteSearchPromise = fetch(localUrl)
     .then((response) => response.json())
     .then((data) => {
@@ -4924,7 +4965,7 @@ function loadShortcutRules() {
   if (shortcutRulesPromise) {
     return shortcutRulesPromise;
   }
-  const rulesUrl = chrome.runtime.getURL('assets/data/shortcut-rules.json');
+  const rulesUrl = chrome.runtime.getURL('public/assets/data/shortcut-rules.json');
   shortcutRulesPromise = fetch(rulesUrl)
     .then((response) => response.json())
     .then((data) => {
@@ -6584,12 +6625,19 @@ function applySearchSuggestionHostDiversity(list) {
   return selected.slice(0, SEARCH_POLICY.finalSuggestionLimit);
 }
 
-function mergeItemsByUrl(itemGroups) {
+function mergeItemsByUrl(itemGroups, searchBlacklistItems) {
+  if (SEARCH_SUGGESTION_UTILS.mergeSearchItems) {
+    return SEARCH_SUGGESTION_UTILS.mergeSearchItems(itemGroups, {
+      buildKey: buildSearchDedupEntryKey,
+      shouldReplace: shouldReplaceDedupedSearchItem,
+      isBlocked: (item) => isUrlBlockedBySearchBlacklist(item && item.url, searchBlacklistItems)
+    });
+  }
   const merged = [];
   const mergedIndexByKey = new Map();
   (Array.isArray(itemGroups) ? itemGroups : []).forEach((items) => {
     (Array.isArray(items) ? items : []).forEach((item) => {
-      if (!item) {
+      if (!item || isUrlBlockedBySearchBlacklist(item && item.url, searchBlacklistItems)) {
         return;
       }
       const urlKey = buildSearchDedupEntryKey(item);
@@ -6608,9 +6656,19 @@ function mergeItemsByUrl(itemGroups) {
 }
 
 // Function to get search suggestions from history and top sites
-async function getSearchSuggestions(query) {
+function normalizeSearchSuggestionsMode(mode) {
+  if (SEARCH_SUGGESTION_UTILS.normalizeSearchSuggestionsMode) {
+    return SEARCH_SUGGESTION_UTILS.normalizeSearchSuggestionsMode(mode);
+  }
+  return mode === 'classic' ? 'classic' : 'classic';
+}
+
+async function getSearchSuggestions(query, options) {
   const suggestions = [];
+  const requestOptions = options && typeof options === 'object' ? options : {};
+  const requestMode = normalizeSearchSuggestionsMode(requestOptions.mode);
   const context = buildSearchQueryContext(query);
+  context.mode = requestMode;
   if (!context.queryLower) {
     return [];
   }
@@ -6644,7 +6702,10 @@ async function getSearchSuggestions(query) {
       }, [], LOCAL_SUGGEST_SOURCE_TIMEOUT_MS),
       getTopSitesCached(),
       callChromeApiWithTimeout((done) => {
-        chrome.bookmarks.search({ query: lookupQuery }, done);
+        const bookmarkRequest = SEARCH_SUGGESTION_UTILS.buildBookmarkSearchRequest
+          ? SEARCH_SUGGESTION_UTILS.buildBookmarkSearchRequest(context)
+          : { query: context.lookupQuery };
+        chrome.bookmarks.search(bookmarkRequest, done);
       }, [], LOCAL_SUGGEST_SOURCE_TIMEOUT_MS),
       getFallbackHistoryItemsCached(),
       getAllBookmarksCached(),
@@ -6654,12 +6715,12 @@ async function getSearchSuggestions(query) {
     const historyItems = mergeItemsByUrl([
       Array.isArray(historyItemsRaw) ? historyItemsRaw : [],
       fallbackHistoryMatches
-    ]).filter((item) => !isUrlBlockedBySearchBlacklist(item && item.url, searchBlacklistItems));
+    ], searchBlacklistItems);
     const bookmarkTextMatches = collectSearchMatches(allBookmarks, context, searchBlacklistItems);
     const bookmarks = mergeItemsByUrl([
       Array.isArray(bookmarksRaw) ? bookmarksRaw : [],
       bookmarkTextMatches
-    ]).filter((item) => !isUrlBlockedBySearchBlacklist(item && item.url, searchBlacklistItems));
+    ], searchBlacklistItems);
 
     const bookmarkNodeMap = (Array.isArray(bookmarks) && bookmarks.length > 0)
       ? await getBookmarkNodeMapCached()
@@ -6938,11 +6999,11 @@ async function getSearchSuggestions(query) {
     ? (storageArea === (chrome && chrome.storage ? chrome.storage.sync : null) ? 'sync' : 'local')
     : null;
   const RI_CSS_URL = (chrome && chrome.runtime && chrome.runtime.getURL)
-    ? chrome.runtime.getURL('assets/remixicon/fonts/remixicon.css')
-    : 'assets/remixicon/fonts/remixicon.css';
+    ? chrome.runtime.getURL('public/assets/remixicon/fonts/remixicon.css')
+    : 'public/assets/remixicon/fonts/remixicon.css';
   const OPEN_SANS_CSS_URL = (chrome && chrome.runtime && chrome.runtime.getURL)
-    ? chrome.runtime.getURL('assets/fonts/open-sans/open-sans.css')
-    : 'assets/fonts/open-sans/open-sans.css';
+    ? chrome.runtime.getURL('public/assets/fonts/open-sans/open-sans.css')
+    : 'public/assets/fonts/open-sans/open-sans.css';
   const overlayMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
   let overlayThemeMode = 'system';
   let overlaySearchResultPriorityMode = 'autocomplete';
@@ -7500,7 +7561,7 @@ async function getSearchSuggestions(query) {
     if (!chrome || !chrome.runtime || typeof chrome.runtime.getURL !== 'function') {
       return Promise.resolve({});
     }
-    const localePath = chrome.runtime.getURL(`_locales/${normalized}/messages.json`);
+    const localePath = chrome.runtime.getURL(`public/_locales/${normalized}/messages.json`);
     const isInvalidExtensionUrl = (() => {
       if (!localePath) {
         return true;
@@ -7589,6 +7650,9 @@ async function getSearchSuggestions(query) {
   }
 
   function normalizeOverlayTabPriorityMode(mode) {
+    if (SETTINGS_UTILS.normalizeOverlayTabQuickSwitch) {
+      return SETTINGS_UTILS.normalizeOverlayTabQuickSwitch(mode);
+    }
     if (mode === 'switchTabFirst') {
       return true;
     }
@@ -8213,7 +8277,7 @@ async function getSearchSuggestions(query) {
       inputId: '_x_extension_search_input_2024_unique_',
       iconId: '_x_extension_search_icon_2024_unique_',
       containerId: '_x_extension_input_container_2024_unique_',
-      rightIconUrl: chrome.runtime.getURL('assets/images/lumno-input-light.png'),
+      rightIconUrl: chrome.runtime.getURL('public/assets/images/lumno-input-light.png'),
       rightIconStyleOverrides: {
         cursor: 'pointer'
       },
@@ -8618,7 +8682,7 @@ async function getSearchSuggestions(query) {
           mode: getThemeModeLabel(nextMode)
         }),
         url: '',
-        favicon: chrome.runtime.getURL('assets/images/lumno.png'),
+        favicon: chrome.runtime.getURL('public/assets/images/lumno.png'),
         nextMode: nextMode
       };
     }
@@ -9413,7 +9477,7 @@ async function getSearchSuggestions(query) {
       }
       if (normalized === 'lumno.kubai.design') {
         return (chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function')
-          ? chrome.runtime.getURL('assets/images/lumno.png')
+          ? chrome.runtime.getURL('public/assets/images/lumno.png')
           : 'https://lumno.kubai.design/favicon.png';
       }
       return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(normalized)}&sz=128`;
@@ -9930,7 +9994,7 @@ async function getSearchSuggestions(query) {
       }
       if (host === 'lumno.kubai.design') {
         const lumnoIconUrl = (chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function')
-          ? chrome.runtime.getURL('assets/images/lumno.png')
+          ? chrome.runtime.getURL('public/assets/images/lumno.png')
           : 'https://lumno.kubai.design/favicon.png';
         return [lumnoIconUrl];
       }
@@ -11512,7 +11576,7 @@ async function getSearchSuggestions(query) {
       if (siteSearchProvidersCache) {
         return Promise.resolve(siteSearchProvidersCache);
       }
-      const localUrl = chrome.runtime.getURL('assets/data/site-search.json');
+      const localUrl = chrome.runtime.getURL('public/assets/data/site-search.json');
       const localFallback = fetch(localUrl)
         .then((response) => response.json())
         .then((data) => {
@@ -11589,7 +11653,8 @@ async function getSearchSuggestions(query) {
           chrome.runtime.sendMessage({
             action: 'getSearchSuggestions',
             query: latestOverlayQuery,
-            context: 'overlay'
+            context: 'overlay',
+            mode: 'classic'
           }, function(response) {
             if (response && response.suggestions) {
               updateSearchSuggestions(response.suggestions, latestOverlayQuery);
@@ -12049,7 +12114,8 @@ async function getSearchSuggestions(query) {
       chrome.runtime.sendMessage({
         action: 'getSearchSuggestions',
         query: query,
-        context: 'overlay'
+        context: 'overlay',
+        mode: 'classic'
       }, function(response) {
         if (response && response.suggestions) {
           updateSearchSuggestions(response.suggestions, query);
@@ -12087,7 +12153,8 @@ async function getSearchSuggestions(query) {
         chrome.runtime.sendMessage({
           action: 'getSearchSuggestions',
           query: query,
-          context: 'overlay'
+          context: 'overlay',
+          mode: 'classic'
         }, function(response) {
           if (response && response.suggestions) {
             updateSearchSuggestions(response.suggestions, query);
@@ -12155,7 +12222,8 @@ async function getSearchSuggestions(query) {
         chrome.runtime.sendMessage({
           action: 'getSearchSuggestions',
           query: query,
-          context: 'overlay'
+          context: 'overlay',
+          mode: 'classic'
         }, function(response) {
           if (overlay && overlay.dataset) {
             overlay.dataset.debugCallbackQuery = query;
@@ -13506,7 +13574,7 @@ async function getSearchSuggestions(query) {
       if (window[promiseKey]) {
         return window[promiseKey];
       }
-      const rulesUrl = chrome.runtime.getURL('assets/data/shortcut-rules.json');
+      const rulesUrl = chrome.runtime.getURL('public/assets/data/shortcut-rules.json');
       const rulesPromise = fetch(rulesUrl)
         .then((response) => response.json())
         .then((data) => {
@@ -14870,7 +14938,8 @@ async function getSearchSuggestions(query) {
                 chrome.runtime.sendMessage({
                   action: 'getSearchSuggestions',
                   query: queryToRefresh,
-                  context: 'overlay'
+                  context: 'overlay',
+                  mode: 'classic'
                 }, function(nextResponse) {
                   if (chrome.runtime && chrome.runtime.lastError) {
                     return;

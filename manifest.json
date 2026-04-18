@@ -3,7 +3,7 @@
       "default_title": "__MSG_ext_name__"
    },
    "background": {
-      "service_worker": "background.js"
+      "service_worker": "src/background/background.js"
    },
    "commands": {
       "show-search": {
@@ -31,7 +31,7 @@
    "content_scripts": [
       {
          "matches": [ "\u003Call_urls>" ],
-         "js": [ "hotkey-listener.js" ],
+         "js": [ "src/content/hotkey-listener.js" ],
          "run_at": "document_start"
       },
       {
@@ -63,32 +63,32 @@
             "*://*.bilibili.com/*",
             "*://*.bilibili.tv/*"
          ],
-         "js": [ "auto-pip-blacklist.js", "site-auto-pip.js" ],
+         "js": [ "src/content/auto-pip-blacklist.js", "src/content/site-auto-pip.js" ],
          "run_at": "document_idle"
       },
       {
          "matches": [ "*://*.youtube.com/*", "*://youtube.com/*" ],
-         "js": [ "youtube-auto-pip.js" ],
+         "js": [ "src/content/youtube-auto-pip.js" ],
          "run_at": "document_idle"
       }
    ],
    "description": "__MSG_ext_description__",
    "chrome_url_overrides": {
-      "newtab": "newtab.html"
+      "newtab": "src/newtab/newtab.html"
    },
    "host_permissions": [ "\u003Call_urls>" ],
    "icons": {
-      "128": "assets/images/lumno.png",
-      "16": "assets/images/lumno.png",
-      "48": "assets/images/lumno.png"
+      "128": "public/assets/images/lumno.png",
+      "16": "public/assets/images/lumno.png",
+      "48": "public/assets/images/lumno.png"
    },
    "options_ui": {
-      "page": "options.html",
+      "page": "src/options/options.html",
       "open_in_tab": true
    },
    "web_accessible_resources": [
       {
-         "resources": [ "assets/images/lumno.png", "assets/images/lumno-input-light.png", "assets/data/site-search.json", "assets/data/shortcut-rules.json", "assets/remixicon/fonts/remixicon.css", "assets/remixicon/fonts/remixicon.woff2", "assets/fonts/open-sans/open-sans.css", "assets/fonts/open-sans/OpenSans-VariableFont-wdth-wght.ttf", "youtube-auto-pip-page.js" ],
+         "resources": [ "public/assets/images/lumno.png", "public/assets/images/lumno-input-light.png", "public/assets/data/site-search.json", "public/assets/data/shortcut-rules.json", "public/assets/remixicon/fonts/remixicon.css", "public/assets/remixicon/fonts/remixicon.woff2", "public/assets/fonts/open-sans/open-sans.css", "public/assets/fonts/open-sans/OpenSans-VariableFont-wdth-wght.ttf", "src/content/youtube-auto-pip-page.js" ],
          "matches": [ "\u003Call_urls>" ]
       }
    ],

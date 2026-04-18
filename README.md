@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/images/lumno.png" alt="Lumno logo" width="96" height="96" />
+  <img src="./public/assets/images/lumno.png" alt="Lumno logo" width="96" height="96" />
 </p>
 
 <h1 align="center">Lumno</h1>

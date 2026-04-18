@@ -222,8 +222,8 @@
       return;
     }
     const theme = resolvedTheme || (document.body ? document.body.getAttribute('data-theme') : 'light');
-    const lightSrc = 'assets/images/lumno-wordmark.svg';
-    const darkSrc = 'assets/images/lumno-wordmark-dark.svg';
+    const lightSrc = chrome.runtime.getURL('public/assets/images/lumno-wordmark.svg');
+    const darkSrc = chrome.runtime.getURL('public/assets/images/lumno-wordmark-dark.svg');
     if (theme === 'dark') {
       if (wordmarkImageEl.getAttribute('src') !== darkSrc) {
         wordmarkImageEl.setAttribute('src', darkSrc);
@@ -725,7 +725,7 @@
 
   function loadLocaleMessages(locale) {
     const normalized = normalizeLocale(locale);
-    const localePath = chrome.runtime.getURL(`_locales/${normalized}/messages.json`);
+    const localePath = chrome.runtime.getURL(`public/_locales/${normalized}/messages.json`);
     return fetch(localePath)
       .then((response) => response.json())
       .catch(() => ({}));
@@ -2220,7 +2220,7 @@
         mode: getThemeModeLabel(nextMode)
       }),
       url: '',
-      favicon: chrome.runtime.getURL('assets/images/lumno.png'),
+      favicon: chrome.runtime.getURL('public/assets/images/lumno.png'),
       nextMode: nextMode
     };
   }
@@ -2768,7 +2768,7 @@
     }
     if (host === 'lumno.kubai.design') {
       const lumnoIconUrl = (chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function')
-        ? chrome.runtime.getURL('assets/images/lumno.png')
+        ? chrome.runtime.getURL('public/assets/images/lumno.png')
         : 'https://lumno.kubai.design/favicon.png';
       return [
         lumnoIconUrl
@@ -5779,7 +5779,7 @@
     }
     if (normalized === 'lumno.kubai.design') {
       return (chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function')
-        ? chrome.runtime.getURL('assets/images/lumno.png')
+        ? chrome.runtime.getURL('public/assets/images/lumno.png')
         : 'https://lumno.kubai.design/favicon.png';
     }
     return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(normalized)}&sz=${FAVICON_GOOGLE_SIZE}`;
@@ -6148,7 +6148,7 @@
       return;
     }
     if (isOwnExtensionUrl(url) && chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function') {
-      const ownIconUrl = chrome.runtime.getURL('assets/images/lumno.png');
+      const ownIconUrl = chrome.runtime.getURL('public/assets/images/lumno.png');
       setFaviconSrcWithAnimation(img, ownIconUrl, { persist: false });
       return;
     }
@@ -8076,7 +8076,7 @@
     if (siteSearchProvidersCache) {
       return Promise.resolve(siteSearchProvidersCache);
     }
-    const localUrl = chrome.runtime.getURL('assets/data/site-search.json');
+    const localUrl = chrome.runtime.getURL('public/assets/data/site-search.json');
     const localFallback = fetch(localUrl)
       .then((response) => response.json())
       .then((data) => {
@@ -8501,7 +8501,7 @@
     if (window._x_extension_shortcut_rules_promise_2024_unique_) {
       return window._x_extension_shortcut_rules_promise_2024_unique_;
     }
-    const rulesUrl = chrome.runtime.getURL('assets/data/shortcut-rules.json');
+    const rulesUrl = chrome.runtime.getURL('public/assets/data/shortcut-rules.json');
     const rulesPromise = fetch(rulesUrl)
       .then((response) => response.json())
       .then((data) => {
@@ -10303,7 +10303,8 @@
       chrome.runtime.sendMessage({
         action: 'getSearchSuggestions',
         query: requestQuery,
-        context: 'newtab'
+        context: 'newtab',
+        mode: 'classic'
       }, function(response) {
         if (suggestionRequestWatchdogTimer) {
           clearTimeout(suggestionRequestWatchdogTimer);
@@ -10987,11 +10988,11 @@
   wordmarkButton.addEventListener('click', (event) => {
     event.preventDefault();
     event.stopPropagation();
-    const optionsUrl = chrome.runtime.getURL('options.html#appearance');
+    const optionsUrl = chrome.runtime.getURL('src/options/options.html#appearance');
     window.open(optionsUrl, '_blank');
   });
   wordmarkImageEl = document.createElement('img');
-  wordmarkImageEl.src = 'assets/images/lumno-wordmark.svg';
+  wordmarkImageEl.src = chrome.runtime.getURL('public/assets/images/lumno-wordmark.svg');
   wordmarkImageEl.alt = '';
   wordmarkImageEl.draggable = false;
   wordmarkImageEl.style.cssText = `
@@ -11037,7 +11038,7 @@
         chrome.runtime.openOptionsPage();
         return;
       }
-      window.open(chrome.runtime.getURL('options.html'), '_blank');
+      window.open(chrome.runtime.getURL('src/options/options.html'), '_blank');
     });
   }
   if (storageArea) {

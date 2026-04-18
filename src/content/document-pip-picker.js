@@ -951,7 +951,7 @@
       const link = pipDocument.createElement('link');
       link.id = '__lumno_pip_remixicon_css_2026__';
       link.rel = 'stylesheet';
-      link.href = getRuntimeUrl('assets/remixicon/fonts/remixicon.css');
+      link.href = getRuntimeUrl('public/assets/remixicon/fonts/remixicon.css');
       pipDocument.head.appendChild(link);
     }
     if (!pipDocument.getElementById('__lumno_pip_dock_style_2026__')) {
