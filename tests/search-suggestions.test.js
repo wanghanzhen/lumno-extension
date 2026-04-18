@@ -241,6 +241,224 @@ function run() {
     0,
     'shared relevance scoring should return zero when there is no text match signal'
   );
+
+  assert.equal(
+    searchSuggestions.hasSearchHomeTitle('GitHub Home', {
+      splitSearchTerms: (value) => String(value || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean),
+      homeTitleTerms: new Set(['home'])
+    }),
+    true,
+    'shared home-title detection should honor injected title terms'
+  );
+
+  const clusterInfo = searchSuggestions.getSearchSuggestionClusterInfo(
+    'https://github.com/openai/gpt-5/issues/123',
+    {
+      normalizeHost: (host) => String(host || '').toLowerCase(),
+      looksLikeVersionSegment: (segment) => /^v?\d/.test(String(segment || '')),
+      siteConfig: {
+        'github.com': {
+          repoAreaCategories: new Map([
+            ['issues', 'repo-issues'],
+            ['pulls', 'repo-pulls']
+          ])
+        }
+      },
+      utilitySegments: new Set(['settings']),
+      actionSegments: new Set(['new'])
+    }
+  );
+
+  assert.deepEqual(
+    clusterInfo,
+    {
+      host: 'github.com',
+      category: 'repo-issues',
+      clusterKey: 'github.com/openai/gpt-5/issues',
+      depth: 4,
+      path: '/openai/gpt-5/issues/123'
+    },
+    'shared cluster info should classify repository areas with injected site config'
+  );
+
+  assert.equal(
+    searchSuggestions.getSearchSuggestionCategoryAdjustment(
+      { type: 'topSite', isTopSite: true, url: 'https://example.com/settings/profile' },
+      ['lumno'],
+      false,
+      {
+        getClusterInfo: () => ({
+          category: 'utility',
+          depth: 2
+        })
+      }
+    ),
+    -91,
+    'shared category adjustment should preserve utility penalties while keeping top-site bonuses'
+  );
+
+  const representativeSignal = searchSuggestions.getSearchNavigationRepresentativeSignal(
+    {
+      type: 'topSite',
+      isTopSite: true,
+      title: 'GitHub',
+      url: 'https://github.com/'
+    },
+    {
+      queryLower: 'github',
+      queryTerms: ['github']
+    },
+    {
+      getClusterInfo: () => ({
+        category: 'site-root',
+        depth: 0
+      }),
+      normalizeHost: (host) => String(host || '').toLowerCase(),
+      hasHomeTitle: () => false
+    }
+  );
+
+  assert.equal(
+    representativeSignal,
+    11,
+    'shared representative signal should reward site roots, exact title matches, host matches, and top sites'
+  );
+
+  assert.equal(
+    searchSuggestions.getSearchDirectNavigationAdjustment(
+      {
+        type: 'topSite',
+        isTopSite: true,
+        title: 'GitHub',
+        url: 'https://github.com/'
+      },
+      'topSite',
+      {
+        intentType: 'brand',
+        queryLower: 'github',
+        queryTerms: ['github'],
+        hasInformationalIntent: false,
+        hasSettingsIntent: false
+      },
+      {
+        getClusterInfo: () => ({
+          category: 'site-root',
+          depth: 0
+        }),
+        hasHomeTitle: () => false,
+        getRepresentativeSignal: () => 7
+      }
+    ),
+    98,
+    'shared direct-navigation adjustment should preserve site-root and representative bonuses'
+  );
+
+  assert.equal(
+    searchSuggestions.getSearchEngineSuggestionScore(
+      {
+        intentType: 'brand',
+        queryLower: 'github',
+        queryTerms: ['github'],
+        hasInformationalIntent: false,
+        hasSettingsIntent: false
+      },
+      [
+        { type: 'bookmark', url: 'https://github.com/' }
+      ],
+      {
+        getRepresentativeSignal: () => 6
+      }
+    ),
+    18,
+    'shared engine suggestion scoring should downrank engine suggestions when a strong local direct match exists'
+  );
+
+  assert.deepEqual(
+    searchSuggestions.buildSearchBrandDirectSuggestion(
+      [
+        {
+          type: 'history',
+          title: 'GitHub Docs',
+          url: 'https://github.com/features/copilot',
+          score: 120,
+          lastVisitTime: now,
+          visitCount: 5,
+          typedCount: 1
+        }
+      ],
+      {
+        intentType: 'brand',
+        queryLower: 'github',
+        queryTerms: ['github'],
+        hasInformationalIntent: false
+      },
+      {
+        getClusterInfo: (url) => (
+          url === 'https://github.com/features/copilot'
+            ? { host: 'github.com', category: 'content', depth: 2 }
+            : { host: 'github.com', category: 'site-root', depth: 0 }
+        ),
+        getBrandHostMatchScore: () => 100,
+        getRepresentativeSignal: () => 4,
+        hasHomeTitle: () => false,
+        siteConfig: {
+          'github.com': {
+            directNavigationUrl: 'https://github.com/',
+            directNavigationTitle: 'GitHub'
+          }
+        },
+        calculateRelevanceScore: () => 80,
+        buildSuggestionReasons: () => ['来源：浏览历史'],
+        buildSuggestionFavicon: () => 'https://github.com/favicon.ico',
+        createSuggestion: (item, sourceType, score, extras) => ({ ...item, type: sourceType, score, ...extras })
+      }
+    ),
+    {
+      title: 'GitHub',
+      url: 'https://github.com/',
+      lastVisitTime: now,
+      visitCount: 5,
+      typedCount: 1,
+      type: 'history',
+      score: 116,
+      favicon: 'https://github.com/favicon.ico',
+      reasons: ['站点直达', '来源：浏览历史'],
+      isTopSite: true,
+      isSyntheticDirect: true
+    },
+    'shared brand-direct builder should synthesize a site-root candidate from host groups'
+  );
+
+  assert.equal(
+    searchSuggestions.buildSearchBrandDirectSuggestion(
+      [
+        {
+          type: 'history',
+          title: 'GitHub',
+          url: 'https://github.com/',
+          score: 120
+        }
+      ],
+      {
+        intentType: 'brand',
+        queryLower: 'github',
+        queryTerms: ['github'],
+        hasInformationalIntent: false
+      },
+      {
+        getClusterInfo: () => ({ host: 'github.com', category: 'site-root', depth: 0 }),
+        getBrandHostMatchScore: () => 100,
+        getRepresentativeSignal: () => 8,
+        hasHomeTitle: () => false,
+        calculateRelevanceScore: () => 80,
+        buildSuggestionReasons: () => ['来源：浏览历史'],
+        buildSuggestionFavicon: () => 'https://github.com/favicon.ico',
+        createSuggestion: (item, sourceType, score, extras) => ({ ...item, type: sourceType, score, ...extras })
+      }
+    ),
+    null,
+    'shared brand-direct builder should skip synthesis when a representative root candidate already exists'
+  );
 }
 
 run();

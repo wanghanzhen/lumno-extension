@@ -5738,11 +5738,20 @@ function buildSearchQueryContext(query) {
 }
 
 function hasSearchHomeTitle(title) {
+  if (SEARCH_SUGGESTION_UTILS.hasSearchHomeTitle) {
+    return SEARCH_SUGGESTION_UTILS.hasSearchHomeTitle(title, {
+      splitSearchTerms,
+      homeTitleTerms: SEARCH_HOME_TITLE_TERMS
+    });
+  }
   const titleTerms = splitSearchTerms(String(title || '').toLowerCase());
   return titleTerms.some((term) => SEARCH_HOME_TITLE_TERMS.has(term));
 }
 
 function isSearchLikelyBrandProductQuery(context) {
+  if (SEARCH_SUGGESTION_UTILS.isSearchLikelyBrandProductQuery) {
+    return SEARCH_SUGGESTION_UTILS.isSearchLikelyBrandProductQuery(context);
+  }
   if (!context || context.intentType !== 'object') {
     return false;
   }
@@ -5756,6 +5765,9 @@ function isSearchLikelyBrandProductQuery(context) {
 }
 
 function isSearchLikelyDirectNavigationQuery(context) {
+  if (SEARCH_SUGGESTION_UTILS.isSearchLikelyDirectNavigationQuery) {
+    return SEARCH_SUGGESTION_UTILS.isSearchLikelyDirectNavigationQuery(context);
+  }
   if (!context || context.hasInformationalIntent) {
     return false;
   }
@@ -5763,6 +5775,11 @@ function isSearchLikelyDirectNavigationQuery(context) {
 }
 
 function getSearchBrandHostMatchScore(host, context) {
+  if (SEARCH_SUGGESTION_UTILS.getSearchBrandHostMatchScore) {
+    return SEARCH_SUGGESTION_UTILS.getSearchBrandHostMatchScore(host, context, {
+      normalizeHost
+    });
+  }
   if (!host || !context || context.intentType !== 'brand') {
     return 0;
   }
@@ -5785,6 +5802,13 @@ function getSearchBrandHostMatchScore(host, context) {
 }
 
 function getSearchNavigationRepresentativeSignal(item, context) {
+  if (SEARCH_SUGGESTION_UTILS.getSearchNavigationRepresentativeSignal) {
+    return SEARCH_SUGGESTION_UTILS.getSearchNavigationRepresentativeSignal(item, context, {
+      getClusterInfo: getSearchSuggestionClusterInfo,
+      normalizeHost,
+      hasHomeTitle: hasSearchHomeTitle
+    });
+  }
   if (!item || !item.url) {
     return 0;
   }
@@ -5845,6 +5869,13 @@ function getSearchNavigationRepresentativeSignal(item, context) {
 }
 
 function getSearchDirectNavigationAdjustment(item, sourceType, context) {
+  if (SEARCH_SUGGESTION_UTILS.getSearchDirectNavigationAdjustment) {
+    return SEARCH_SUGGESTION_UTILS.getSearchDirectNavigationAdjustment(item, sourceType, context, {
+      getClusterInfo: getSearchSuggestionClusterInfo,
+      hasHomeTitle: hasSearchHomeTitle,
+      getRepresentativeSignal: getSearchNavigationRepresentativeSignal
+    });
+  }
   if (!isSearchLikelyDirectNavigationQuery(context) || !item || !item.url) {
     return 0;
   }
@@ -5891,6 +5922,11 @@ function getSearchDirectNavigationAdjustment(item, sourceType, context) {
 }
 
 function getSearchEngineSuggestionScore(context, localSuggestions) {
+  if (SEARCH_SUGGESTION_UTILS.getSearchEngineSuggestionScore) {
+    return SEARCH_SUGGESTION_UTILS.getSearchEngineSuggestionScore(context, localSuggestions, {
+      getRepresentativeSignal: getSearchNavigationRepresentativeSignal
+    });
+  }
   const candidates = Array.isArray(localSuggestions) ? localSuggestions : [];
   const hasStrongLocalDirectMatch = candidates.some((suggestion) => (
     suggestion &&
@@ -5925,6 +5961,9 @@ function looksLikeVersionSegment(segment) {
 }
 
 function looksLikeOpaqueIdSegment(segment) {
+  if (SEARCH_SUGGESTION_UTILS.looksLikeOpaqueIdSegment) {
+    return SEARCH_SUGGESTION_UTILS.looksLikeOpaqueIdSegment(segment);
+  }
   const value = String(segment || '').trim().toLowerCase();
   if (!value) {
     return false;
@@ -5942,6 +5981,11 @@ function looksLikeOpaqueIdSegment(segment) {
 }
 
 function normalizeClusterSegment(segment) {
+  if (SEARCH_SUGGESTION_UTILS.normalizeClusterSegment) {
+    return SEARCH_SUGGESTION_UTILS.normalizeClusterSegment(segment, {
+      looksLikeVersionSegment
+    });
+  }
   const value = String(segment || '').trim().toLowerCase();
   if (!value) {
     return '';
@@ -5956,6 +6000,15 @@ function normalizeClusterSegment(segment) {
 }
 
 function getSearchSuggestionClusterInfo(url) {
+  if (SEARCH_SUGGESTION_UTILS.getSearchSuggestionClusterInfo) {
+    return SEARCH_SUGGESTION_UTILS.getSearchSuggestionClusterInfo(url, {
+      normalizeHost,
+      looksLikeVersionSegment,
+      siteConfig: SEARCH_SITE_CONFIG,
+      utilitySegments: SEARCH_UTILITY_SEGMENTS,
+      actionSegments: SEARCH_ACTION_SEGMENTS
+    });
+  }
   if (!url) {
     return {
       host: '',
@@ -6158,6 +6211,11 @@ function matchesSearchTitlePinyin(item, context) {
 }
 
 function getSearchSuggestionCategoryAdjustment(item, queryTerms, hasSettingsIntent) {
+  if (SEARCH_SUGGESTION_UTILS.getSearchSuggestionCategoryAdjustment) {
+    return SEARCH_SUGGESTION_UTILS.getSearchSuggestionCategoryAdjustment(item, queryTerms, hasSettingsIntent, {
+      getClusterInfo: getSearchSuggestionClusterInfo
+    });
+  }
   if (!item || !item.url) {
     return 0;
   }
@@ -6344,6 +6402,19 @@ function buildSearchSuggestionReasons(item, sourceType, context) {
 }
 
 function buildSearchBrandDirectSuggestion(candidates, context) {
+  if (SEARCH_SUGGESTION_UTILS.buildSearchBrandDirectSuggestion) {
+    return SEARCH_SUGGESTION_UTILS.buildSearchBrandDirectSuggestion(candidates, context, {
+      getClusterInfo: getSearchSuggestionClusterInfo,
+      getBrandHostMatchScore: getSearchBrandHostMatchScore,
+      getRepresentativeSignal: getSearchNavigationRepresentativeSignal,
+      hasHomeTitle: hasSearchHomeTitle,
+      siteConfig: SEARCH_SITE_CONFIG,
+      calculateRelevanceScore: calculateSearchRelevanceScore,
+      buildSuggestionReasons: buildSearchSuggestionReasons,
+      buildSuggestionFavicon: buildSearchSuggestionFavicon,
+      createSuggestion: createSearchSuggestion
+    });
+  }
   if (context.intentType !== 'brand' || context.hasInformationalIntent) {
     return null;
   }
