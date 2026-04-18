@@ -5641,7 +5641,6 @@ function normalizeSearchSuggestionsMode(mode) {
 }
 
 async function getSearchSuggestions(query, options) {
-  const suggestions = [];
   const requestOptions = options && typeof options === 'object' ? options : {};
   const requestMode = normalizeSearchSuggestionsMode(requestOptions.mode);
   const context = buildSearchQueryContext(query);
@@ -5679,9 +5678,7 @@ async function getSearchSuggestions(query, options) {
       }, [], LOCAL_SUGGEST_SOURCE_TIMEOUT_MS),
       getTopSitesCached(),
       callChromeApiWithTimeout((done) => {
-        const bookmarkRequest = SEARCH_SUGGESTION_UTILS.buildBookmarkSearchRequest
-          ? SEARCH_SUGGESTION_UTILS.buildBookmarkSearchRequest(context)
-          : { query: context.lookupQuery };
+        const bookmarkRequest = SEARCH_SUGGESTION_UTILS.buildBookmarkSearchRequest(context);
         chrome.bookmarks.search(bookmarkRequest, done);
       }, [], LOCAL_SUGGEST_SOURCE_TIMEOUT_MS),
       getFallbackHistoryItemsCached(),
@@ -5711,152 +5708,49 @@ async function getSearchSuggestions(query, options) {
       '其他书签',
       '移动设备书签'
     ]);
-    const suggestionIndexByKey = new Map();
-    const fallbackTopSites = [];
+    const localSuggestionBundle = SEARCH_SUGGESTION_UTILS.buildLocalSearchSuggestions(
+      historyItems,
+      topSites,
+      bookmarks,
+      context,
+      {
+        bookmarkNodeMap,
+        rootFolderTitles,
+        buildDedupEntryKey: buildSearchDedupEntryKey,
+        calculateRelevanceScore: calculateSearchRelevanceScore,
+        createSuggestion: createSearchSuggestion,
+        buildSuggestionFavicon: buildSearchSuggestionFavicon,
+        buildSuggestionReasons: buildSearchSuggestionReasons,
+        buildBrandDirectSuggestion: buildSearchBrandDirectSuggestion,
+        isSearchEngineResultUrl,
+        isBlockedUrl: (url) => isUrlBlockedBySearchBlacklist(url, searchBlacklistItems),
+        normalizeHost
+      }
+    );
+    const suggestions = localSuggestionBundle.suggestions;
+    const fallbackTopSites = localSuggestionBundle.fallbackTopSites;
 
-    function buildBookmarkPath(bookmark) {
-      const pathParts = [];
-      let parentId = bookmark && bookmark.parentId ? bookmark.parentId : bookmark && bookmark.id;
-      while (parentId) {
-        const node = bookmarkNodeMap.get(parentId);
-        if (!node) {
-          break;
-        }
-        const isRootFolder = !node.parentId && rootFolderTitles.has(node.title);
-        if (!node.hasUrl && node.title && !isRootFolder) {
-          pathParts.unshift(node.title);
-        }
-        parentId = node.parentId;
-      }
-      return pathParts.join('/');
-    }
-
-    function upsertSuggestion(item, sourceType, extras) {
-      if (!item || !item.url) {
-        return null;
-      }
-      const itemKey = buildSearchDedupEntryKey(item);
-      const baseScore = calculateSearchRelevanceScore(item, sourceType, context);
-      if (baseScore <= 0) {
-        return null;
-      }
-      const normalizedExtras = extras && typeof extras === 'object' ? { ...extras } : {};
-      const scoreAdjustment = Number(normalizedExtras.scoreAdjustment) || 0;
-      delete normalizedExtras.scoreAdjustment;
-      const suggestion = createSearchSuggestion(item, sourceType, baseScore + scoreAdjustment, {
-        favicon: buildSearchSuggestionFavicon(item.url),
-        reasons: buildSearchSuggestionReasons(item, sourceType, context),
-        ...normalizedExtras
-      });
-      const existingIndex = suggestionIndexByKey.get(itemKey);
-      if (typeof existingIndex === 'number') {
-        suggestions[existingIndex] = suggestion;
-      } else {
-        suggestionIndexByKey.set(itemKey, suggestions.length);
-        suggestions.push(suggestion);
-      }
-      return suggestion;
-    }
-
-    historyItems.forEach((item) => {
-      if (!item || !item.title || isSearchEngineResultUrl(item.url)) {
-        return;
-      }
-      upsertSuggestion(item, 'history');
-    });
-
-    (Array.isArray(topSites) ? topSites : []).forEach((site) => {
-      if (!site || !site.url || isUrlBlockedBySearchBlacklist(site.url, searchBlacklistItems)) {
-        return;
-      }
-      const itemKey = buildSearchDedupEntryKey(site);
-      const existingIndex = suggestionIndexByKey.get(itemKey);
-      if (typeof existingIndex === 'number') {
-        const existing = suggestions[existingIndex];
-        suggestions[existingIndex] = {
-          ...existing,
-          isTopSite: true,
-          score: (existing.score || 0) + 6
-        };
-        return;
-      }
-
-      const titleLower = site.title ? site.title.toLowerCase() : '';
-      let scoreAdjustment = 4;
-      try {
-        const hostname = normalizeHost(new URL(site.url).hostname);
-        if (hostname.startsWith(context.queryLower)) {
-          scoreAdjustment += 8;
-        }
-      } catch (e) {
-        // Ignore invalid URLs.
-      }
-      if (titleLower.startsWith(context.queryLower)) {
-        scoreAdjustment += 6;
-      }
-      const suggestion = upsertSuggestion(site, 'topSite', { isTopSite: true, scoreAdjustment });
-      if (!suggestion) {
-        fallbackTopSites.push(site);
-      }
-    });
-
-    bookmarks.forEach((bookmark) => {
-      if (!bookmark || !bookmark.url) {
-        return;
-      }
-      upsertSuggestion(bookmark, 'bookmark', {
-        path: buildBookmarkPath(bookmark),
-        scoreAdjustment: 4
-      });
-    });
-
-    const brandDirectSuggestion = buildSearchBrandDirectSuggestion(suggestions, context);
-    if (brandDirectSuggestion) {
-      const directKey = buildSearchDedupEntryKey(brandDirectSuggestion);
-      const existingIndex = suggestionIndexByKey.get(directKey);
-      if (typeof existingIndex === 'number') {
-        suggestions[existingIndex] = brandDirectSuggestion;
-      } else {
-        suggestionIndexByKey.set(directKey, suggestions.length);
-        suggestions.push(brandDirectSuggestion);
-      }
-    }
-
-    const engineSuggestionScore = getSearchEngineSuggestionScore(context, suggestions);
-    engineSuggestions.forEach((suggestion) => {
-      if (suggestion && suggestion !== context.lookupQuery) {
-        const suggestionItem = {
-          type: 'googleSuggest',
-          title: suggestion,
-          url: buildDefaultSearchUrl(suggestion),
-          favicon: getDefaultSearchEngineFaviconUrl(),
-          score: engineSuggestionScore,
-          searchQuery: suggestion,
-          forceSearch: true,
-          reasons: ['来源：搜索建议']
-        };
-        if (!isSuggestionBlockedBySearchBlacklist(suggestionItem, searchBlacklistItems, suggestion)) {
-          suggestions.push(suggestionItem);
-        }
-      }
+    SEARCH_SUGGESTION_UTILS.appendEngineSearchSuggestions(suggestions, engineSuggestions, context, {
+      buildSearchUrl: buildDefaultSearchUrl,
+      getDefaultFaviconUrl: getDefaultSearchEngineFaviconUrl,
+      getEngineSuggestionScore: getSearchEngineSuggestionScore,
+      isSuggestionBlocked: (suggestionItem, suggestionQuery) => (
+        isSuggestionBlockedBySearchBlacklist(suggestionItem, searchBlacklistItems, suggestionQuery)
+      )
     });
 
     suggestions.sort(compareSearchSuggestions);
 
-    let finalSuggestions = SEARCH_SUGGESTION_UTILS.finalizeSearchSuggestions
-      ? SEARCH_SUGGESTION_UTILS.finalizeSearchSuggestions(suggestions, fallbackTopSites, context, {
-        searchBlacklistItems,
-        queryForProvider: context.lookupQuery,
-        policy: SEARCH_POLICY,
-        buildDedupEntryKey: buildSearchDedupEntryKey,
-        filterBlacklistedSuggestions: filterBlacklistedSuggestions,
-        applyHostDiversity: applySearchSuggestionHostDiversity,
-        createSuggestion: createSearchSuggestion,
-        buildSuggestionFavicon: buildSearchSuggestionFavicon
-      })
-      : applySearchSuggestionHostDiversity(
-        filterBlacklistedSuggestions(suggestions, searchBlacklistItems, context.lookupQuery)
-      );
+    const finalSuggestions = SEARCH_SUGGESTION_UTILS.finalizeSearchSuggestions(suggestions, fallbackTopSites, context, {
+      searchBlacklistItems,
+      queryForProvider: context.lookupQuery,
+      policy: SEARCH_POLICY,
+      buildDedupEntryKey: buildSearchDedupEntryKey,
+      filterBlacklistedSuggestions: filterBlacklistedSuggestions,
+      applyHostDiversity: applySearchSuggestionHostDiversity,
+      createSuggestion: createSearchSuggestion,
+      buildSuggestionFavicon: buildSearchSuggestionFavicon
+    });
     
     return finalSuggestions;
     

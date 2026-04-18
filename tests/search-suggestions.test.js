@@ -196,6 +196,171 @@ function run() {
     'shared suggestion factory should normalize numeric fields and preserve extras'
   );
 
+  assert.equal(
+    searchSuggestions.buildBookmarkPath(
+      { id: '3', parentId: '2', url: 'https://example.com/guides/start' },
+      {
+        bookmarkNodeMap: new Map([
+          ['2', { id: '2', title: 'Guides', parentId: '1', hasUrl: false }],
+          ['1', { id: '1', title: 'Bookmarks bar', parentId: '', hasUrl: false }]
+        ]),
+        rootFolderTitles: new Set(['Bookmarks bar'])
+      }
+    ),
+    'Guides',
+    'shared bookmark path building should skip root folders and keep intermediate folders'
+  );
+
+  const localSuggestionBundle = searchSuggestions.buildLocalSearchSuggestions(
+    [
+      {
+        title: 'GitHub Docs',
+        url: 'https://github.com/features/copilot',
+        lastVisitTime: now,
+        visitCount: 3,
+        typedCount: 1
+      }
+    ],
+    [
+      {
+        title: 'GitHub Docs',
+        url: 'https://github.com/features/copilot',
+        lastVisitTime: now,
+        visitCount: 3,
+        typedCount: 1
+      },
+      {
+        title: 'Fallback Site',
+        url: 'https://fallback.example.com/'
+      }
+    ],
+    [
+      {
+        id: '3',
+        parentId: '2',
+        title: 'Guide',
+        url: 'https://example.com/guides/start',
+        lastVisitTime: now - (1000 * 60 * 60),
+        visitCount: 1,
+        typedCount: 0
+      }
+    ],
+    {
+      lookupQuery: 'github',
+      queryLower: 'github',
+      queryTerms: ['github'],
+      intentType: 'brand',
+      hasSettingsIntent: false,
+      hasInformationalIntent: false
+    },
+    {
+      bookmarkNodeMap: new Map([
+        ['2', { id: '2', title: 'Guides', parentId: '1', hasUrl: false }],
+        ['1', { id: '1', title: 'Bookmarks bar', parentId: '', hasUrl: false }]
+      ]),
+      rootFolderTitles: new Set(['Bookmarks bar']),
+      buildDedupEntryKey: (item) => item.url,
+      calculateRelevanceScore: (item) => (
+        item.url === 'https://fallback.example.com/' ? 0 : 10
+      ),
+      createSuggestion: (item, sourceType, score, extras) => ({ ...item, type: sourceType, score, ...extras }),
+      buildSuggestionFavicon: (url) => `${url}favicon.ico`,
+      buildSuggestionReasons: (_item, sourceType) => [`source:${sourceType}`],
+      buildBrandDirectSuggestion: () => null,
+      isSearchEngineResultUrl: () => false,
+      isBlockedUrl: () => false,
+      normalizeHost: (host) => String(host || '').toLowerCase()
+    }
+  );
+
+  assert.deepEqual(
+    localSuggestionBundle.suggestions.map((item) => ({
+      type: item.type,
+      url: item.url,
+      score: item.score,
+      isTopSite: item.isTopSite === true,
+      path: item.path || ''
+    })),
+    [
+      {
+        type: 'history',
+        url: 'https://github.com/features/copilot',
+        score: 16,
+        isTopSite: true,
+        path: ''
+      },
+      {
+        type: 'bookmark',
+        url: 'https://example.com/guides/start',
+        score: 14,
+        isTopSite: false,
+        path: 'Guides'
+      }
+    ],
+    'shared local suggestion assembly should merge top sites into existing entries, keep bookmark paths, and preserve source-specific boosts'
+  );
+
+  assert.deepEqual(
+    localSuggestionBundle.fallbackTopSites,
+    [
+      {
+        title: 'Fallback Site',
+        url: 'https://fallback.example.com/'
+      }
+    ],
+    'shared local suggestion assembly should keep zero-score top sites for fallback use'
+  );
+
+  const engineSuggestionTarget = [
+    { type: 'history', title: 'GitHub', url: 'https://github.com/', score: 12 }
+  ];
+  searchSuggestions.appendEngineSearchSuggestions(
+    engineSuggestionTarget,
+    ['github docs', 'github'],
+    { lookupQuery: 'github' },
+    {
+      buildSearchUrl: (query) => `https://search.example.com?q=${encodeURIComponent(query)}`,
+      getDefaultFaviconUrl: () => 'https://search.example.com/favicon.ico',
+      getEngineSuggestionScore: () => 18,
+      isSuggestionBlocked: (_item, query) => query === 'github docs'
+    }
+  );
+
+  assert.deepEqual(
+    engineSuggestionTarget,
+    [
+      { type: 'history', title: 'GitHub', url: 'https://github.com/', score: 12 }
+    ],
+    'shared engine suggestion assembly should skip blocked queries and exact query echoes'
+  );
+
+  searchSuggestions.appendEngineSearchSuggestions(
+    engineSuggestionTarget,
+    ['github copilot'],
+    { lookupQuery: 'github' },
+    {
+      buildSearchUrl: (query) => `https://search.example.com?q=${encodeURIComponent(query)}`,
+      getDefaultFaviconUrl: () => 'https://search.example.com/favicon.ico',
+      getEngineSuggestionScore: () => 18,
+      isSuggestionBlocked: () => false
+    }
+  );
+
+  assert.deepEqual(
+    engineSuggestionTarget[1],
+    {
+      type: 'googleSuggest',
+      title: 'github copilot',
+      url: 'https://search.example.com?q=github%20copilot',
+      favicon: 'https://search.example.com/favicon.ico',
+      score: 18,
+      searchQuery: 'github copilot',
+      forceSearch: true,
+      reasons: ['来源：搜索建议']
+    },
+    'shared engine suggestion assembly should append search-engine candidates with injected score and URL helpers'
+  );
+
   assert.deepEqual(
     searchSuggestions.buildSearchSuggestionReasons(
       {
