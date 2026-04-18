@@ -4773,17 +4773,7 @@ function isUrlBlockedBySearchBlacklist(url, items) {
 }
 
 function buildBlacklistProbeUrlFromTemplate(template, query) {
-  if (SEARCH_SUGGESTION_UTILS.buildBlacklistProbeUrlFromTemplate) {
-    return SEARCH_SUGGESTION_UTILS.buildBlacklistProbeUrlFromTemplate(template, query);
-  }
-  const rawTemplate = String(template || '');
-  if (!rawTemplate) {
-    return '';
-  }
-  if (!rawTemplate.includes('{query}')) {
-    return rawTemplate;
-  }
-  return rawTemplate.replace(/\{query\}/g, encodeURIComponent(String(query || '')));
+  return SEARCH_SUGGESTION_UTILS.buildBlacklistProbeUrlFromTemplate(template, query);
 }
 
 function isInteractiveSiteSearchProvider(provider) {
@@ -4805,44 +4795,21 @@ function getSiteSearchProviderEntryUrl(provider) {
 }
 
 function isSuggestionBlockedBySearchBlacklist(suggestion, items, queryForProvider) {
-  if (SEARCH_SUGGESTION_UTILS.isSuggestionBlockedBySearchBlacklist) {
-    return SEARCH_SUGGESTION_UTILS.isSuggestionBlockedBySearchBlacklist(
-      suggestion,
-      items,
-      queryForProvider,
-      { isBlockedUrl: isUrlBlockedBySearchBlacklist }
-    );
-  }
-  if (!suggestion) {
-    return false;
-  }
-  if (suggestion.type === 'newtab') {
-    return false;
-  }
-  if (suggestion.url && isUrlBlockedBySearchBlacklist(suggestion.url, items)) {
-    return true;
-  }
-  if (suggestion.type === 'siteSearchPrompt' && suggestion.provider) {
-    const probeQuery = String(queryForProvider || '').trim() || 'test';
-    const probeUrl = buildBlacklistProbeUrlFromTemplate(suggestion.provider.template, probeQuery);
-    return Boolean(probeUrl) && isUrlBlockedBySearchBlacklist(probeUrl, items);
-  }
-  return false;
+  return SEARCH_SUGGESTION_UTILS.isSuggestionBlockedBySearchBlacklist(
+    suggestion,
+    items,
+    queryForProvider,
+    { isBlockedUrl: isUrlBlockedBySearchBlacklist }
+  );
 }
 
 function filterBlacklistedSuggestions(list, items, queryForProvider) {
-  if (SEARCH_SUGGESTION_UTILS.filterBlacklistedSuggestions) {
-    return SEARCH_SUGGESTION_UTILS.filterBlacklistedSuggestions(
-      list,
-      items,
-      queryForProvider,
-      { isBlockedUrl: isUrlBlockedBySearchBlacklist }
-    );
-  }
-  if (!Array.isArray(list) || list.length === 0) {
-    return [];
-  }
-  return list.filter((suggestion) => !isSuggestionBlockedBySearchBlacklist(suggestion, items, queryForProvider));
+  return SEARCH_SUGGESTION_UTILS.filterBlacklistedSuggestions(
+    list,
+    items,
+    queryForProvider,
+    { isBlockedUrl: isUrlBlockedBySearchBlacklist }
+  );
 }
 
 function mergeCustomProviders(baseItems, customItems) {
@@ -5553,131 +5520,32 @@ const SEARCH_SITE_CONFIG = {
 };
 
 function shouldIgnoreSearchDedupQueryParam(paramName) {
-  if (SEARCH_SUGGESTION_UTILS.shouldIgnoreSearchDedupQueryParam) {
-    return SEARCH_SUGGESTION_UTILS.shouldIgnoreSearchDedupQueryParam(paramName, {
-      ignoredParamNames: SEARCH_DEDUP_IGNORED_QUERY_PARAM_NAMES
-    });
-  }
-  const normalized = String(paramName || '').trim().toLowerCase();
-  if (!normalized) {
-    return false;
-  }
-  return normalized.startsWith('utm_') || SEARCH_DEDUP_IGNORED_QUERY_PARAM_NAMES.has(normalized);
+  return SEARCH_SUGGESTION_UTILS.shouldIgnoreSearchDedupQueryParam(paramName, {
+    ignoredParamNames: SEARCH_DEDUP_IGNORED_QUERY_PARAM_NAMES
+  });
 }
 
 function buildSearchDedupUrlKey(url) {
-  if (SEARCH_SUGGESTION_UTILS.buildSearchDedupUrlKey) {
-    return SEARCH_SUGGESTION_UTILS.buildSearchDedupUrlKey(url, {
-      normalizeHost,
-      siteConfig: SEARCH_SITE_CONFIG,
-      shouldIgnoreQueryParam: shouldIgnoreSearchDedupQueryParam
-    });
-  }
-  if (!url || typeof url !== 'string') {
-    return '';
-  }
-  try {
-    const parsed = new URL(url);
-    parsed.protocol = String(parsed.protocol || '').toLowerCase();
-    parsed.hostname = normalizeHost(parsed.hostname);
-    if ((parsed.protocol === 'http:' && parsed.port === '80') || (parsed.protocol === 'https:' && parsed.port === '443')) {
-      parsed.port = '';
-    }
-    parsed.hash = '';
-    const normalizedPathname = parsed.pathname !== '/'
-      ? (parsed.pathname.replace(/\/+$/, '') || '/')
-      : '/';
-    parsed.pathname = normalizedPathname;
-    const normalizedHost = normalizeHost(parsed.hostname);
-    const siteConfig = SEARCH_SITE_CONFIG[normalizedHost] || null;
-    const ignoreAllSearchParamsPaths = siteConfig && siteConfig.ignoreAllSearchParamsPaths
-      ? siteConfig.ignoreAllSearchParamsPaths
-      : null;
-    const shouldIgnoreAllSearchParams = Boolean(
-      ignoreAllSearchParamsPaths && ignoreAllSearchParamsPaths.has(normalizedPathname)
-    );
-    const nextParams = new URLSearchParams();
-    if (!shouldIgnoreAllSearchParams) {
-      Array.from(parsed.searchParams.entries())
-        .filter(([key]) => !shouldIgnoreSearchDedupQueryParam(key))
-        .sort(([keyA, valueA], [keyB, valueB]) => {
-          if (keyA === keyB) {
-            return String(valueA).localeCompare(String(valueB));
-          }
-          return String(keyA).localeCompare(String(keyB));
-        })
-        .forEach(([key, value]) => {
-          nextParams.append(key, value);
-        });
-    }
-    parsed.search = nextParams.toString() ? `?${nextParams.toString()}` : '';
-    return parsed.toString();
-  } catch (e) {
-    return String(url).trim().toLowerCase();
-  }
+  return SEARCH_SUGGESTION_UTILS.buildSearchDedupUrlKey(url, {
+    normalizeHost,
+    siteConfig: SEARCH_SITE_CONFIG,
+    shouldIgnoreQueryParam: shouldIgnoreSearchDedupQueryParam
+  });
 }
 
 function shouldReplaceDedupedSearchItem(candidate, existing) {
-  if (SEARCH_SUGGESTION_UTILS.shouldReplaceDedupedSearchItem) {
-    return SEARCH_SUGGESTION_UTILS.shouldReplaceDedupedSearchItem(candidate, existing);
-  }
-  if (!existing) {
-    return true;
-  }
-  const candidateVisit = Number(candidate && candidate.lastVisitTime) || 0;
-  const existingVisit = Number(existing && existing.lastVisitTime) || 0;
-  if (candidateVisit !== existingVisit) {
-    return candidateVisit > existingVisit;
-  }
-  const candidateTyped = Number(candidate && candidate.typedCount) || 0;
-  const existingTyped = Number(existing && existing.typedCount) || 0;
-  if (candidateTyped !== existingTyped) {
-    return candidateTyped > existingTyped;
-  }
-  const candidateVisitCount = Number(candidate && candidate.visitCount) || 0;
-  const existingVisitCount = Number(existing && existing.visitCount) || 0;
-  if (candidateVisitCount !== existingVisitCount) {
-    return candidateVisitCount > existingVisitCount;
-  }
-  const candidateTitleLength = String(candidate && candidate.title || '').trim().length;
-  const existingTitleLength = String(existing && existing.title || '').trim().length;
-  return candidateTitleLength > existingTitleLength;
+  return SEARCH_SUGGESTION_UTILS.shouldReplaceDedupedSearchItem(candidate, existing);
 }
 
 function normalizeSearchDedupTitle(title) {
-  if (SEARCH_SUGGESTION_UTILS.normalizeSearchDedupTitle) {
-    return SEARCH_SUGGESTION_UTILS.normalizeSearchDedupTitle(title);
-  }
-  return String(title || '')
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .trim();
+  return SEARCH_SUGGESTION_UTILS.normalizeSearchDedupTitle(title);
 }
 
 function buildSearchDedupEntryKey(item) {
-  if (SEARCH_SUGGESTION_UTILS.buildSearchDedupEntryKey) {
-    return SEARCH_SUGGESTION_UTILS.buildSearchDedupEntryKey(item, {
-      buildDedupUrlKey: buildSearchDedupUrlKey,
-      normalizeTitle: normalizeSearchDedupTitle
-    });
-  }
-  if (!item) {
-    return '';
-  }
-  const urlKey = typeof item.url === 'string' && item.url
-    ? buildSearchDedupUrlKey(item.url)
-    : '';
-  const titleKey = normalizeSearchDedupTitle(item.title);
-  if (urlKey && titleKey) {
-    return `url:${urlKey}::title:${titleKey}`;
-  }
-  if (urlKey) {
-    return `url:${urlKey}`;
-  }
-  if (titleKey) {
-    return `title:${titleKey}`;
-  }
-  return `id:${item.id || ''}:${String(item.title || '').trim()}`;
+  return SEARCH_SUGGESTION_UTILS.buildSearchDedupEntryKey(item, {
+    buildDedupUrlKey: buildSearchDedupUrlKey,
+    normalizeTitle: normalizeSearchDedupTitle
+  });
 }
 
 const SEARCH_UTILITY_SEGMENTS = new Set([
@@ -5762,215 +5630,46 @@ function buildSearchQueryContext(query) {
 }
 
 function hasSearchHomeTitle(title) {
-  if (SEARCH_SUGGESTION_UTILS.hasSearchHomeTitle) {
-    return SEARCH_SUGGESTION_UTILS.hasSearchHomeTitle(title, {
-      splitSearchTerms,
-      homeTitleTerms: SEARCH_HOME_TITLE_TERMS
-    });
-  }
-  const titleTerms = splitSearchTerms(String(title || '').toLowerCase());
-  return titleTerms.some((term) => SEARCH_HOME_TITLE_TERMS.has(term));
+  return SEARCH_SUGGESTION_UTILS.hasSearchHomeTitle(title, {
+    splitSearchTerms,
+    homeTitleTerms: SEARCH_HOME_TITLE_TERMS
+  });
 }
 
 function isSearchLikelyBrandProductQuery(context) {
-  if (SEARCH_SUGGESTION_UTILS.isSearchLikelyBrandProductQuery) {
-    return SEARCH_SUGGESTION_UTILS.isSearchLikelyBrandProductQuery(context);
-  }
-  if (!context || context.intentType !== 'object') {
-    return false;
-  }
-  if (context.hasInformationalIntent || context.hasSettingsIntent) {
-    return false;
-  }
-  if (!Array.isArray(context.queryTerms) || context.queryTerms.length !== 2) {
-    return false;
-  }
-  return context.queryLower.length <= 28;
+  return SEARCH_SUGGESTION_UTILS.isSearchLikelyBrandProductQuery(context);
 }
 
 function isSearchLikelyDirectNavigationQuery(context) {
-  if (SEARCH_SUGGESTION_UTILS.isSearchLikelyDirectNavigationQuery) {
-    return SEARCH_SUGGESTION_UTILS.isSearchLikelyDirectNavigationQuery(context);
-  }
-  if (!context || context.hasInformationalIntent) {
-    return false;
-  }
-  return context.intentType === 'brand' || isSearchLikelyBrandProductQuery(context);
+  return SEARCH_SUGGESTION_UTILS.isSearchLikelyDirectNavigationQuery(context);
 }
 
 function getSearchBrandHostMatchScore(host, context) {
-  if (SEARCH_SUGGESTION_UTILS.getSearchBrandHostMatchScore) {
-    return SEARCH_SUGGESTION_UTILS.getSearchBrandHostMatchScore(host, context, {
-      normalizeHost
-    });
-  }
-  if (!host || !context || context.intentType !== 'brand') {
-    return 0;
-  }
-  const query = String(context.queryLower || '').trim();
-  if (!query) {
-    return 0;
-  }
-  const hostLabels = normalizeHost(host).split('.').filter(Boolean);
-  let score = 0;
-  hostLabels.forEach((label) => {
-    if (label === query) {
-      score = Math.max(score, 100);
-      return;
-    }
-    if (query.length >= 2 && label.startsWith(query)) {
-      score = Math.max(score, 60);
-    }
+  return SEARCH_SUGGESTION_UTILS.getSearchBrandHostMatchScore(host, context, {
+    normalizeHost
   });
-  return score;
 }
 
 function getSearchNavigationRepresentativeSignal(item, context) {
-  if (SEARCH_SUGGESTION_UTILS.getSearchNavigationRepresentativeSignal) {
-    return SEARCH_SUGGESTION_UTILS.getSearchNavigationRepresentativeSignal(item, context, {
-      getClusterInfo: getSearchSuggestionClusterInfo,
-      normalizeHost,
-      hasHomeTitle: hasSearchHomeTitle
-    });
-  }
-  if (!item || !item.url) {
-    return 0;
-  }
-  const info = getSearchSuggestionClusterInfo(item.url);
-  const titleLower = String(item.title || '').toLowerCase();
-  const hasHomeTitle = hasSearchHomeTitle(titleLower);
-  let signal = 0;
-
-  if (info.category === 'site-root' || info.category === 'repo-root') {
-    signal += 4;
-  } else if (info.category === 'section' || info.category === 'landing') {
-    signal += 3;
-  } else if (hasHomeTitle && info.category !== 'utility' && info.category !== 'action') {
-    signal += 3;
-  } else if (info.category === 'content' && info.depth <= 2) {
-    signal += 1;
-  }
-
-  if (info.category === 'utility' || info.category === 'action' || info.category === 'user') {
-    signal -= 3;
-  } else if (info.category === 'content' && info.depth >= 2 && !hasHomeTitle) {
-    signal -= 1;
-  }
-
-  if (titleLower === context.queryLower) {
-    signal += 4;
-  } else if (titleLower.startsWith(context.queryLower)) {
-    signal += 3;
-  } else if (context.queryTerms.every((term) => term && titleLower.includes(term))) {
-    signal += 2;
-  }
-
-  try {
-    const hostLabels = normalizeHost(new URL(item.url).hostname).split('.').filter(Boolean);
-    context.queryTerms.forEach((term) => {
-      if (!term) {
-        return;
-      }
-      if (hostLabels.includes(term)) {
-        signal += 2;
-        return;
-      }
-      if (term.length >= 2 && hostLabels.some((label) => label.startsWith(term))) {
-        signal += 1;
-      }
-    });
-  } catch (e) {
-    // Ignore invalid URL.
-  }
-
-  if (item.type === 'topSite' || item.isTopSite) {
-    signal += 1;
-  } else if (item.type === 'bookmark') {
-    signal += 1;
-  }
-
-  return signal;
+  return SEARCH_SUGGESTION_UTILS.getSearchNavigationRepresentativeSignal(item, context, {
+    getClusterInfo: getSearchSuggestionClusterInfo,
+    normalizeHost,
+    hasHomeTitle: hasSearchHomeTitle
+  });
 }
 
 function getSearchDirectNavigationAdjustment(item, sourceType, context) {
-  if (SEARCH_SUGGESTION_UTILS.getSearchDirectNavigationAdjustment) {
-    return SEARCH_SUGGESTION_UTILS.getSearchDirectNavigationAdjustment(item, sourceType, context, {
-      getClusterInfo: getSearchSuggestionClusterInfo,
-      hasHomeTitle: hasSearchHomeTitle,
-      getRepresentativeSignal: getSearchNavigationRepresentativeSignal
-    });
-  }
-  if (!isSearchLikelyDirectNavigationQuery(context) || !item || !item.url) {
-    return 0;
-  }
-  const info = getSearchSuggestionClusterInfo(item.url);
-  const hasHomeTitle = hasSearchHomeTitle(item.title);
-  const representativeSignal = getSearchNavigationRepresentativeSignal(item, context);
-  let adjustment = 0;
-
-  if (context.intentType === 'brand') {
-    if (info.category === 'site-root' || info.category === 'repo-root') {
-      adjustment += 70;
-    } else if (info.category === 'section' || info.category === 'landing') {
-      adjustment += 32;
-    } else if (hasHomeTitle) {
-      adjustment += 42;
-    } else if (info.category === 'content' && info.depth >= 2) {
-      adjustment -= 28;
-    }
-  } else if (isSearchLikelyBrandProductQuery(context)) {
-    if (info.category === 'site-root' || info.category === 'repo-root') {
-      adjustment += 34;
-    } else if (info.category === 'section' || info.category === 'landing' || hasHomeTitle) {
-      adjustment += 28;
-    } else if (info.category === 'content' && info.depth >= 2) {
-      adjustment -= 12;
-    }
-  }
-
-  if (representativeSignal >= 6) {
-    adjustment += 18;
-  } else if (representativeSignal <= 0) {
-    adjustment -= 12;
-  }
-
-  if ((info.category === 'utility' || info.category === 'action' || info.category === 'user') && !context.hasSettingsIntent) {
-    adjustment -= 36;
-  }
-
-  if (sourceType === 'topSite' && (info.category === 'site-root' || hasHomeTitle)) {
-    adjustment += 10;
-  }
-
-  return adjustment;
+  return SEARCH_SUGGESTION_UTILS.getSearchDirectNavigationAdjustment(item, sourceType, context, {
+    getClusterInfo: getSearchSuggestionClusterInfo,
+    hasHomeTitle: hasSearchHomeTitle,
+    getRepresentativeSignal: getSearchNavigationRepresentativeSignal
+  });
 }
 
 function getSearchEngineSuggestionScore(context, localSuggestions) {
-  if (SEARCH_SUGGESTION_UTILS.getSearchEngineSuggestionScore) {
-    return SEARCH_SUGGESTION_UTILS.getSearchEngineSuggestionScore(context, localSuggestions, {
-      getRepresentativeSignal: getSearchNavigationRepresentativeSignal
-    });
-  }
-  const candidates = Array.isArray(localSuggestions) ? localSuggestions : [];
-  const hasStrongLocalDirectMatch = candidates.some((suggestion) => (
-    suggestion &&
-    suggestion.type !== 'googleSuggest' &&
-    getSearchNavigationRepresentativeSignal(suggestion, context) >= 6
-  ));
-
-  if (context.intentType === 'brand') {
-    return hasStrongLocalDirectMatch ? 18 : 48;
-  }
-  if (isSearchLikelyBrandProductQuery(context)) {
-    return hasStrongLocalDirectMatch ? 34 : 78;
-  }
-  if (context.intentType === 'path' || context.intentType === 'revisit') {
-    return 52;
-  }
-  if (context.hasInformationalIntent) {
-    return 220;
-  }
-  return 160;
+  return SEARCH_SUGGESTION_UTILS.getSearchEngineSuggestionScore(context, localSuggestions, {
+    getRepresentativeSignal: getSearchNavigationRepresentativeSignal
+  });
 }
 
 function looksLikeVersionSegment(segment) {
@@ -5985,131 +5684,23 @@ function looksLikeVersionSegment(segment) {
 }
 
 function looksLikeOpaqueIdSegment(segment) {
-  if (SEARCH_SUGGESTION_UTILS.looksLikeOpaqueIdSegment) {
-    return SEARCH_SUGGESTION_UTILS.looksLikeOpaqueIdSegment(segment);
-  }
-  const value = String(segment || '').trim().toLowerCase();
-  if (!value) {
-    return false;
-  }
-  if (/^\d+$/.test(value)) {
-    return true;
-  }
-  if (/^[0-9a-f]{8,}$/i.test(value)) {
-    return true;
-  }
-  if (/^[0-9a-f]{8}-[0-9a-f-]{8,}$/i.test(value)) {
-    return true;
-  }
-  return false;
+  return SEARCH_SUGGESTION_UTILS.looksLikeOpaqueIdSegment(segment);
 }
 
 function normalizeClusterSegment(segment) {
-  if (SEARCH_SUGGESTION_UTILS.normalizeClusterSegment) {
-    return SEARCH_SUGGESTION_UTILS.normalizeClusterSegment(segment, {
-      looksLikeVersionSegment
-    });
-  }
-  const value = String(segment || '').trim().toLowerCase();
-  if (!value) {
-    return '';
-  }
-  if (looksLikeVersionSegment(value)) {
-    return ':version';
-  }
-  if (looksLikeOpaqueIdSegment(value)) {
-    return ':id';
-  }
-  return value;
+  return SEARCH_SUGGESTION_UTILS.normalizeClusterSegment(segment, {
+    looksLikeVersionSegment
+  });
 }
 
 function getSearchSuggestionClusterInfo(url) {
-  if (SEARCH_SUGGESTION_UTILS.getSearchSuggestionClusterInfo) {
-    return SEARCH_SUGGESTION_UTILS.getSearchSuggestionClusterInfo(url, {
-      normalizeHost,
-      looksLikeVersionSegment,
-      siteConfig: SEARCH_SITE_CONFIG,
-      utilitySegments: SEARCH_UTILITY_SEGMENTS,
-      actionSegments: SEARCH_ACTION_SEGMENTS
-    });
-  }
-  if (!url) {
-    return {
-      host: '',
-      category: 'unknown',
-      clusterKey: '',
-      depth: 0,
-      path: '/'
-    };
-  }
-  try {
-    const parsed = new URL(url);
-    const host = normalizeHost(parsed.hostname);
-    const path = parsed.pathname !== '/' ? (parsed.pathname.replace(/\/+$/, '') || '/') : '/';
-    const rawSegments = path.split('/').filter(Boolean).map((item) => decodeURIComponent(item).toLowerCase());
-    const segments = rawSegments.map(normalizeClusterSegment);
-    const first = segments[0] || '';
-    const second = segments[1] || '';
-    const third = segments[2] || '';
-
-    const siteConfig = SEARCH_SITE_CONFIG[host] || null;
-    if (host === 'github.com' && segments.length >= 2) {
-      const repoBase = `${host}/${segments[0]}/${segments[1]}`;
-      if (segments.length === 2) {
-        return { host, category: 'repo-root', clusterKey: repoBase, depth: segments.length, path };
-      }
-      const repoAreaCategories = siteConfig && siteConfig.repoAreaCategories
-        ? siteConfig.repoAreaCategories
-        : null;
-      if (repoAreaCategories && repoAreaCategories.has(third)) {
-        return { host, category: repoAreaCategories.get(third), clusterKey: `${repoBase}/${third}`, depth: segments.length, path };
-      }
-      if (third === 'tree' || third === 'blob') {
-        const area = segments[4] || segments[3] || 'root';
-        return { host, category: 'repo-code', clusterKey: `${repoBase}/code/${area}`, depth: segments.length, path };
-      }
-      return { host, category: 'repo-child', clusterKey: `${repoBase}/${third || 'root'}`, depth: segments.length, path };
-    }
-
-    if (segments.length === 0) {
-      return { host, category: 'site-root', clusterKey: `${host}/`, depth: 0, path };
-    }
-
-    if (SEARCH_UTILITY_SEGMENTS.has(first)) {
-      return { host, category: 'utility', clusterKey: `${host}/utility/${first}`, depth: segments.length, path };
-    }
-
-    if (SEARCH_ACTION_SEGMENTS.has(first)) {
-      return { host, category: 'action', clusterKey: `${host}/action/${first}`, depth: segments.length, path };
-    }
-
-    if ((first === 'u' || first === 'user' || first === 'users' || first === 'profile' || first === 'profiles') && second) {
-      return { host, category: 'user', clusterKey: `${host}/user/${second}`, depth: segments.length, path };
-    }
-
-    if (first === 'release' || first === 'releases' || first === 'onboarding' || first === 'changelog') {
-      return { host, category: 'landing', clusterKey: `${host}/${first}`, depth: segments.length, path };
-    }
-
-    if (first === 'docs' || first === 'doc' || first === 'wiki' || first === 'help' || first === 'guide' || first === 'guides') {
-      const docKey = second || 'root';
-      return { host, category: 'docs', clusterKey: `${host}/${first}/${docKey}`, depth: segments.length, path };
-    }
-
-    if (segments.length === 1) {
-      return { host, category: 'section', clusterKey: `${host}/${first}`, depth: segments.length, path };
-    }
-
-    return { host, category: 'content', clusterKey: `${host}/${first}/${second}`, depth: segments.length, path };
-  } catch (e) {
-    return {
-      host: '',
-      category: 'unknown',
-      clusterKey: String(url).trim().toLowerCase(),
-      depth: 0,
-      path: '/'
-    };
-  }
+  return SEARCH_SUGGESTION_UTILS.getSearchSuggestionClusterInfo(url, {
+    normalizeHost,
+    looksLikeVersionSegment,
+    siteConfig: SEARCH_SITE_CONFIG,
+    utilitySegments: SEARCH_UTILITY_SEGMENTS,
+    actionSegments: SEARCH_ACTION_SEGMENTS
+  });
 }
 
 function looksLikeNavigationQuery(query) {
@@ -6164,49 +5755,7 @@ function classifySearchIntent(query, queryTerms) {
 }
 
 function getSearchSourceAdjustment(sourceType, intentType) {
-  if (SEARCH_SUGGESTION_UTILS.getSearchSourceAdjustment) {
-    return SEARCH_SUGGESTION_UTILS.getSearchSourceAdjustment(sourceType, intentType);
-  }
-  const source = String(sourceType || '');
-  const intent = String(intentType || 'object');
-
-  if (intent === 'navigation' || intent === 'brand') {
-    if (source === 'bookmark') {
-      return 24;
-    }
-    if (source === 'topSite') {
-      return 20;
-    }
-    if (source === 'history') {
-      return 4;
-    }
-  }
-
-  if (intent === 'path' || intent === 'revisit') {
-    if (source === 'history') {
-      return 18;
-    }
-    if (source === 'bookmark') {
-      return 10;
-    }
-    if (source === 'topSite') {
-      return 8;
-    }
-  }
-
-  if (intent === 'object') {
-    if (source === 'bookmark') {
-      return 18;
-    }
-    if (source === 'history') {
-      return 12;
-    }
-    if (source === 'topSite') {
-      return 10;
-    }
-  }
-
-  return 0;
+  return SEARCH_SUGGESTION_UTILS.getSearchSourceAdjustment(sourceType, intentType);
 }
 
 function matchesSearchQueryText(item, context) {
@@ -6235,58 +5784,9 @@ function matchesSearchTitlePinyin(item, context) {
 }
 
 function getSearchSuggestionCategoryAdjustment(item, queryTerms, hasSettingsIntent) {
-  if (SEARCH_SUGGESTION_UTILS.getSearchSuggestionCategoryAdjustment) {
-    return SEARCH_SUGGESTION_UTILS.getSearchSuggestionCategoryAdjustment(item, queryTerms, hasSettingsIntent, {
-      getClusterInfo: getSearchSuggestionClusterInfo
-    });
-  }
-  if (!item || !item.url) {
-    return 0;
-  }
-  const info = getSearchSuggestionClusterInfo(item.url);
-  const querySet = new Set(Array.isArray(queryTerms) ? queryTerms : []);
-  const hasActionIntent = querySet.has('new') || querySet.has('edit') || querySet.has('create') || querySet.has('settings') || querySet.has('设置');
-  let adjustment = 0;
-
-  if (info.category === 'site-root' || info.category === 'repo-root') {
-    adjustment += 18;
-  } else if (info.category === 'section') {
-    adjustment += 8;
-  } else if (info.category === 'landing' || info.category === 'docs') {
-    adjustment += 10;
-  }
-
-  if (item.type === 'topSite' || item.isTopSite) {
-    if (info.category === 'site-root' || info.category === 'repo-root') {
-      adjustment += 20;
-    } else if (info.category === 'section' || info.category === 'landing') {
-      adjustment += 10;
-    } else {
-      adjustment += 4;
-    }
-  }
-
-  if (info.depth >= 3 && info.category !== 'docs' && info.category !== 'repo-code') {
-    adjustment -= Math.min(16, (info.depth - 2) * 4);
-  }
-
-  if (info.category === 'utility') {
-    adjustment -= hasSettingsIntent ? 10 : 95;
-  }
-
-  if (info.category === 'action') {
-    adjustment -= hasActionIntent ? 8 : 80;
-  }
-
-  if (info.category === 'repo-code') {
-    adjustment -= 18;
-  }
-
-  if (info.category === 'repo-child' && info.depth >= 4) {
-    adjustment -= 14;
-  }
-
-  return adjustment;
+  return SEARCH_SUGGESTION_UTILS.getSearchSuggestionCategoryAdjustment(item, queryTerms, hasSettingsIntent, {
+    getClusterInfo: getSearchSuggestionClusterInfo
+  });
 }
 
 function getOwnExtensionUtilityPenalty(item, hasSettingsIntent) {
@@ -6306,392 +5806,51 @@ function getOwnExtensionUtilityPenalty(item, hasSettingsIntent) {
 }
 
 function getRecentPopularityBoost(suggestion) {
-  if (SEARCH_SUGGESTION_UTILS.getRecentPopularityBoost) {
-    return SEARCH_SUGGESTION_UTILS.getRecentPopularityBoost(suggestion);
-  }
-  if (!suggestion) {
-    return 0;
-  }
-  let boost = 0;
-  const visitCount = Number(suggestion.visitCount) > 0 ? Number(suggestion.visitCount) : 0;
-  const typedCount = Number(suggestion.typedCount) > 0 ? Number(suggestion.typedCount) : 0;
-  if (visitCount > 0) {
-    boost += Math.min(10, Math.log2(visitCount + 1) * 2.5);
-  }
-  if (typedCount > 0) {
-    boost += Math.min(6, typedCount * 1.25);
-  }
-  const lastVisitTime = Number(suggestion.lastVisitTime) || 0;
-  if (lastVisitTime > 0) {
-    const hoursSinceVisit = (Date.now() - lastVisitTime) / (1000 * 60 * 60);
-    if (hoursSinceVisit < 2) boost += 10;
-    else if (hoursSinceVisit < 24) boost += 6;
-    else if (hoursSinceVisit < 72) boost += 3;
-  }
-  return boost;
+  return SEARCH_SUGGESTION_UTILS.getRecentPopularityBoost(suggestion);
 }
 
 function getSearchSuggestionSourceRank(suggestion) {
-  if (SEARCH_SUGGESTION_UTILS.getSearchSuggestionSourceRank) {
-    return SEARCH_SUGGESTION_UTILS.getSearchSuggestionSourceRank(suggestion);
-  }
-  if (!suggestion) {
-    return 0;
-  }
-  if (suggestion.type === 'bookmark') {
-    return 3;
-  }
-  if (suggestion.type === 'history') {
-    return 2;
-  }
-  if (suggestion.type === 'topSite' || suggestion.isTopSite) {
-    return 1;
-  }
-  return 0;
+  return SEARCH_SUGGESTION_UTILS.getSearchSuggestionSourceRank(suggestion);
 }
 
 function compareSearchSuggestions(a, b) {
-  if (SEARCH_SUGGESTION_UTILS.compareSearchSuggestions) {
-    return SEARCH_SUGGESTION_UTILS.compareSearchSuggestions(a, b);
-  }
-  const scoreDiff = ((b.score || 0) + getRecentPopularityBoost(b)) -
-    ((a.score || 0) + getRecentPopularityBoost(a));
-  if (scoreDiff !== 0) {
-    return scoreDiff;
-  }
-  const sourceRankDiff = getSearchSuggestionSourceRank(b) - getSearchSuggestionSourceRank(a);
-  if (sourceRankDiff !== 0) {
-    return sourceRankDiff;
-  }
-  const visitDiff = (Number(b.visitCount) || 0) - (Number(a.visitCount) || 0);
-  if (visitDiff !== 0) {
-    return visitDiff;
-  }
-  const aVisit = a.lastVisitTime || 0;
-  const bVisit = b.lastVisitTime || 0;
-  return bVisit - aVisit;
+  return SEARCH_SUGGESTION_UTILS.compareSearchSuggestions(a, b);
 }
 
 function createSearchSuggestion(item, sourceType, score, extras) {
-  if (SEARCH_SUGGESTION_UTILS.createSearchSuggestion) {
-    return SEARCH_SUGGESTION_UTILS.createSearchSuggestion(item, sourceType, score, extras);
-  }
-  return {
-    type: sourceType,
-    title: item.title || item.url,
-    url: item.url,
-    favicon: extras && extras.favicon ? extras.favicon : '',
-    score,
-    lastVisitTime: Number(item.lastVisitTime) || 0,
-    visitCount: Number(item.visitCount) || 0,
-    typedCount: Number(item.typedCount) || 0,
-    reasons: extras && Array.isArray(extras.reasons) ? extras.reasons : [],
-    ...(extras || {})
-  };
+  return SEARCH_SUGGESTION_UTILS.createSearchSuggestion(item, sourceType, score, extras);
 }
 
 function buildSearchSuggestionReasons(item, sourceType, context) {
-  if (SEARCH_SUGGESTION_UTILS.buildSearchSuggestionReasons) {
-    return SEARCH_SUGGESTION_UTILS.buildSearchSuggestionReasons(item, sourceType, context, {
-      getTitlePinyinMatchScore
-    });
-  }
-  const reasons = [];
-  if (sourceType === 'bookmark') {
-    reasons.push('来源：书签');
-  } else if (sourceType === 'topSite') {
-    reasons.push('来源：常用站点');
-  } else if (sourceType === 'history') {
-    reasons.push('来源：浏览历史');
-  }
-  const pinyinMatch = getTitlePinyinMatchScore(item && item.title, context.normalizedPinyinQuery);
-  if (pinyinMatch.reason === 'initials-exact' || pinyinMatch.reason === 'initials-prefix') {
-    reasons.push('标题首字母匹配');
-  } else if (pinyinMatch.score > 0) {
-    reasons.push('标题拼音匹配');
-  }
-  if (item && item.lastVisitTime) {
-    const hoursSinceVisit = (Date.now() - item.lastVisitTime) / (1000 * 60 * 60);
-    if (hoursSinceVisit < 24) {
-      reasons.push('最近 24 小时访问');
-    } else if (hoursSinceVisit < 72) {
-      reasons.push('最近 3 天访问');
-    }
-  }
-  const visitCount = Number(item && item.visitCount) || 0;
-  if (visitCount > 1) {
-    reasons.push(`访问 ${visitCount} 次`);
-  }
-  return reasons.slice(0, 3);
+  return SEARCH_SUGGESTION_UTILS.buildSearchSuggestionReasons(item, sourceType, context, {
+    getTitlePinyinMatchScore
+  });
 }
 
 function buildSearchBrandDirectSuggestion(candidates, context) {
-  if (SEARCH_SUGGESTION_UTILS.buildSearchBrandDirectSuggestion) {
-    return SEARCH_SUGGESTION_UTILS.buildSearchBrandDirectSuggestion(candidates, context, {
-      getClusterInfo: getSearchSuggestionClusterInfo,
-      getBrandHostMatchScore: getSearchBrandHostMatchScore,
-      getRepresentativeSignal: getSearchNavigationRepresentativeSignal,
-      hasHomeTitle: hasSearchHomeTitle,
-      siteConfig: SEARCH_SITE_CONFIG,
-      calculateRelevanceScore: calculateSearchRelevanceScore,
-      buildSuggestionReasons: buildSearchSuggestionReasons,
-      buildSuggestionFavicon: buildSearchSuggestionFavicon,
-      createSuggestion: createSearchSuggestion
-    });
-  }
-  if (context.intentType !== 'brand' || context.hasInformationalIntent) {
-    return null;
-  }
-  const hostGroups = new Map();
-  (Array.isArray(candidates) ? candidates : []).forEach((suggestion) => {
-    if (!suggestion || !suggestion.url || suggestion.type === 'googleSuggest') {
-      return;
-    }
-    const info = getSearchSuggestionClusterInfo(suggestion.url);
-    if (!info.host) {
-      return;
-    }
-    const list = hostGroups.get(info.host) || [];
-    list.push(suggestion);
-    hostGroups.set(info.host, list);
-  });
-
-  let bestGroup = null;
-  hostGroups.forEach((group, host) => {
-    const hostScore = getSearchBrandHostMatchScore(host, context);
-    if (hostScore <= 0) {
-      return;
-    }
-    const sourceSuggestion = group
-      .slice()
-      .sort((a, b) => {
-        const signalDiff = getSearchNavigationRepresentativeSignal(b, context) -
-          getSearchNavigationRepresentativeSignal(a, context);
-        if (signalDiff !== 0) {
-          return signalDiff;
-        }
-        return (b.score || 0) - (a.score || 0);
-      })[0];
-    const hasRepresentative = group.some((suggestion) => {
-      const info = getSearchSuggestionClusterInfo(suggestion && suggestion.url);
-      return info.category === 'site-root' ||
-        info.category === 'repo-root' ||
-        info.category === 'section' ||
-        info.category === 'landing' ||
-        hasSearchHomeTitle(suggestion && suggestion.title);
-    });
-    const totalScore = hostScore +
-      Math.max(0, getSearchNavigationRepresentativeSignal(sourceSuggestion, context)) +
-      Math.min(8, group.length * 2);
-    if (!bestGroup || totalScore > bestGroup.totalScore) {
-      bestGroup = {
-        host,
-        sourceSuggestion,
-        hasRepresentative,
-        totalScore
-      };
-    }
-  });
-
-  if (!bestGroup || bestGroup.hasRepresentative || !bestGroup.sourceSuggestion) {
-    return null;
-  }
-
-  const siteConfig = SEARCH_SITE_CONFIG[bestGroup.host] || null;
-  const directUrl = siteConfig && siteConfig.directNavigationUrl
-    ? siteConfig.directNavigationUrl
-    : `https://${bestGroup.host}/`;
-  const directTitle = siteConfig && siteConfig.directNavigationTitle
-    ? siteConfig.directNavigationTitle
-    : (bestGroup.sourceSuggestion.title || bestGroup.host);
-  const sourceType = bestGroup.sourceSuggestion.type === 'bookmark'
-    ? 'bookmark'
-    : ((bestGroup.sourceSuggestion.type === 'topSite' || bestGroup.sourceSuggestion.isTopSite) ? 'topSite' : 'history');
-  const directItem = {
-    title: directTitle,
-    url: directUrl,
-    lastVisitTime: bestGroup.sourceSuggestion.lastVisitTime || 0,
-    visitCount: Number(bestGroup.sourceSuggestion.visitCount) || 0,
-    typedCount: Number(bestGroup.sourceSuggestion.typedCount) || 0
-  };
-  const baseScore = calculateSearchRelevanceScore(directItem, sourceType, context);
-  if (baseScore <= 0) {
-    return null;
-  }
-  const reasons = ['站点直达']
-    .concat(buildSearchSuggestionReasons(directItem, sourceType, context))
-    .slice(0, 3);
-  return createSearchSuggestion(directItem, sourceType, baseScore + 36, {
-    favicon: buildSearchSuggestionFavicon(directUrl),
-    reasons,
-    isTopSite: true,
-    isSyntheticDirect: true
+  return SEARCH_SUGGESTION_UTILS.buildSearchBrandDirectSuggestion(candidates, context, {
+    getClusterInfo: getSearchSuggestionClusterInfo,
+    getBrandHostMatchScore: getSearchBrandHostMatchScore,
+    getRepresentativeSignal: getSearchNavigationRepresentativeSignal,
+    hasHomeTitle: hasSearchHomeTitle,
+    siteConfig: SEARCH_SITE_CONFIG,
+    calculateRelevanceScore: calculateSearchRelevanceScore,
+    buildSuggestionReasons: buildSearchSuggestionReasons,
+    buildSuggestionFavicon: buildSearchSuggestionFavicon,
+    createSuggestion: createSearchSuggestion
   });
 }
 
 function calculateSearchRelevanceScore(item, sourceType, context) {
-  if (SEARCH_SUGGESTION_UTILS.calculateSearchRelevanceScore) {
-    return SEARCH_SUGGESTION_UTILS.calculateSearchRelevanceScore(item, sourceType, context, {
-      normalizeHost,
-      splitSearchTerms,
-      getTitlePinyinMatchScore,
-      shouldBlockFaviconForHost,
-      getSuggestionCategoryAdjustment: getSearchSuggestionCategoryAdjustment,
-      getDirectNavigationAdjustment: getSearchDirectNavigationAdjustment,
-      getOwnExtensionUtilityPenalty
-    });
-  }
-  const titleLower = item.title ? item.title.toLowerCase() : '';
-  const urlLower = item.url.toLowerCase();
-  let hostname = '';
-  let hostLabels = [];
-  let titleTokens = [];
-  let pathTokens = [];
-  let textScore = 0;
-  let behaviorScore = 0;
-  let sourceScore = 0;
-
-  if (titleLower === context.queryLower) textScore += 140;
-  if (titleLower.startsWith(context.queryLower)) textScore += 70;
-
-  titleTokens = splitSearchTerms(titleLower);
-  if (titleTokens.includes(context.queryLower)) {
-    textScore += 45;
-  }
-
-  context.queryTerms.forEach((word) => {
-    if (!word) {
-      return;
-    }
-    if (titleTokens.includes(word)) {
-      textScore += 24;
-      return;
-    }
-    if (titleTokens.some((token) => token.startsWith(word))) {
-      textScore += 14;
-      return;
-    }
-    if (titleLower.includes(word)) textScore += 8;
+  return SEARCH_SUGGESTION_UTILS.calculateSearchRelevanceScore(item, sourceType, context, {
+    normalizeHost,
+    splitSearchTerms,
+    getTitlePinyinMatchScore,
+    shouldBlockFaviconForHost,
+    getSuggestionCategoryAdjustment: getSearchSuggestionCategoryAdjustment,
+    getDirectNavigationAdjustment: getSearchDirectNavigationAdjustment,
+    getOwnExtensionUtilityPenalty
   });
-
-  if (titleLower.includes(context.queryLower)) textScore += 24;
-
-  try {
-    hostname = normalizeHost(new URL(item.url).hostname);
-    hostLabels = hostname.split('.').filter(Boolean);
-    if (hostname.includes(context.queryLower)) textScore += 14;
-    if (hostname.startsWith(context.queryLower)) textScore += 20;
-    if (hostLabels.includes(context.queryLower)) {
-      textScore += 42;
-    }
-    context.queryTerms.forEach((word) => {
-      if (!word) {
-        return;
-      }
-      if (hostLabels.includes(word)) {
-        textScore += 28;
-        return;
-      }
-      if (hostLabels.some((label) => label.startsWith(word))) {
-        textScore += 16;
-        return;
-      }
-      if (hostname.includes(word)) {
-        textScore += 8;
-      }
-    });
-  } catch (e) {
-    // Ignore invalid URL.
-  }
-
-  if (urlLower.includes(context.queryLower)) textScore += 10;
-  try {
-    const parsedUrl = new URL(item.url);
-    const pathnameLower = String(parsedUrl.pathname || '').toLowerCase();
-    const decodedPathnameLower = decodeURIComponent(pathnameLower);
-    const pathSegments = decodedPathnameLower.split('/').filter(Boolean);
-    pathSegments.forEach((segment) => {
-      const segmentTokens = segment.split(/[^a-z0-9\u4e00-\u9fff]+/i).filter(Boolean);
-      if (segmentTokens.length > 0) {
-        pathTokens.push(...segmentTokens);
-      }
-    });
-    if (decodedPathnameLower && context.queryTerms.length > 0) {
-      context.queryTerms.forEach((word) => {
-        if (!word) {
-          return;
-        }
-        if (pathTokens.includes(word)) {
-          textScore += 32;
-          return;
-        }
-        if (pathTokens.some((token) => token.startsWith(word))) {
-          textScore += 18;
-          return;
-        }
-        if (pathTokens.some((token) => token.includes(word))) {
-          textScore += 10;
-          return;
-        }
-        if (decodedPathnameLower.includes(word)) {
-          textScore += 8;
-        }
-      });
-    }
-  } catch (e) {
-    // Ignore invalid URL parsing/decoding errors.
-  }
-
-  textScore += getTitlePinyinMatchScore(item.title, context.normalizedPinyinQuery).score;
-
-  if (hostname && shouldBlockFaviconForHost(hostname)) {
-    if (titleLower === context.queryLower) textScore += 60;
-    else if (titleLower.startsWith(context.queryLower)) textScore += 42;
-    else if (titleLower.includes(context.queryLower)) textScore += 24;
-    else if (urlLower.includes(context.queryLower)) textScore += 20;
-  }
-
-  if (textScore <= 0) {
-    return 0;
-  }
-
-  if (item.lastVisitTime) {
-    const daysSinceVisit = (Date.now() - item.lastVisitTime) / (1000 * 60 * 60 * 24);
-    if (daysSinceVisit < 1) behaviorScore += 10;
-    else if (daysSinceVisit < 7) behaviorScore += 5;
-    else if (daysSinceVisit < 30) behaviorScore += 2;
-  }
-
-  const visitCount = Number(item.visitCount) > 0 ? Number(item.visitCount) : 0;
-  const typedCount = Number(item.typedCount) > 0 ? Number(item.typedCount) : 0;
-  if (visitCount > 0) {
-    behaviorScore += Math.min(18, Math.log2(visitCount + 1) * 4);
-  }
-  if (typedCount > 0) {
-    behaviorScore += Math.min(12, typedCount * 2);
-  }
-  if (item.lastVisitTime) {
-    const hoursSinceVisit = (Date.now() - item.lastVisitTime) / (1000 * 60 * 60);
-    if (hoursSinceVisit < 2) behaviorScore += 20;
-    else if (hoursSinceVisit < 24) behaviorScore += 14;
-    else if (hoursSinceVisit < 72) behaviorScore += 8;
-  }
-
-  if (sourceType === 'bookmark') {
-    sourceScore += 12;
-  } else if (sourceType === 'history') {
-    sourceScore += 4;
-  } else if (sourceType === 'topSite') {
-    sourceScore += 6;
-  }
-  sourceScore += getSearchSourceAdjustment(sourceType, context.intentType);
-
-  return textScore +
-    behaviorScore +
-    sourceScore +
-    getSearchSuggestionCategoryAdjustment(item, context.queryTerms, context.hasSettingsIntent) +
-    getSearchDirectNavigationAdjustment(item, sourceType, context) -
-    getOwnExtensionUtilityPenalty(item, context.hasSettingsIntent);
 }
 
 function buildSearchSuggestionFavicon(url) {
@@ -6722,80 +5881,11 @@ function collectSearchMatches(items, context, searchBlacklistItems) {
 }
 
 function applySearchSuggestionHostDiversity(list) {
-  if (SEARCH_SUGGESTION_UTILS.applySearchSuggestionHostDiversity) {
-    return SEARCH_SUGGESTION_UTILS.applySearchSuggestionHostDiversity(list, {
-      buildDedupEntryKey: buildSearchDedupEntryKey,
-      getClusterInfo: getSearchSuggestionClusterInfo,
-      policy: SEARCH_POLICY
-    });
-  }
-  const candidates = Array.isArray(list) ? list : [];
-  const selected = [];
-  const selectedKeys = new Set();
-  const hostCounts = new Map();
-  const clusterCounts = new Map();
-  const hostHasTopSiteRepresentative = new Set();
-
-  const tryTake = (suggestion, hostLimit, clusterLimit) => {
-    if (!suggestion) {
-      return false;
-    }
-    const dedupKey = buildSearchDedupEntryKey(suggestion);
-    if (!dedupKey || selectedKeys.has(dedupKey)) {
-      return false;
-    }
-    const info = getSearchSuggestionClusterInfo(suggestion.url);
-    const hostKey = info.host || '__nohost__';
-    const clusterKey = info.clusterKey || dedupKey;
-    const currentHostCount = hostCounts.get(hostKey) || 0;
-    const currentClusterCount = clusterCounts.get(clusterKey) || 0;
-    if (currentHostCount >= hostLimit || currentClusterCount >= clusterLimit) {
-      return false;
-    }
-    selected.push(suggestion);
-    selectedKeys.add(dedupKey);
-    hostCounts.set(hostKey, currentHostCount + 1);
-    clusterCounts.set(clusterKey, currentClusterCount + 1);
-    return true;
-  };
-
-  candidates.forEach((suggestion) => {
-    if (!suggestion || !(suggestion.type === 'topSite' || suggestion.isTopSite)) {
-      return;
-    }
-    const info = getSearchSuggestionClusterInfo(suggestion.url);
-    const hostKey = info.host || '__nohost__';
-    if (hostHasTopSiteRepresentative.has(hostKey)) {
-      return;
-    }
-    const isRepresentativeCategory =
-      info.category === 'site-root' ||
-      info.category === 'repo-root' ||
-      info.category === 'section' ||
-      info.category === 'landing';
-    if (!isRepresentativeCategory) {
-      return;
-    }
-    if (tryTake(
-      suggestion,
-      SEARCH_POLICY.topSiteRepresentativeHostLimit,
-      SEARCH_POLICY.topSiteRepresentativeClusterLimit
-    )) {
-      hostHasTopSiteRepresentative.add(hostKey);
-    }
+  return SEARCH_SUGGESTION_UTILS.applySearchSuggestionHostDiversity(list, {
+    buildDedupEntryKey: buildSearchDedupEntryKey,
+    getClusterInfo: getSearchSuggestionClusterInfo,
+    policy: SEARCH_POLICY
   });
-
-  candidates.forEach((suggestion) => {
-    tryTake(suggestion, SEARCH_POLICY.primaryHostLimit, SEARCH_POLICY.primaryClusterLimit);
-  });
-
-  if (selected.length < SEARCH_POLICY.finalSuggestionLimit) {
-    candidates.forEach((suggestion) => {
-      tryTake(suggestion, SEARCH_POLICY.secondaryHostLimit, SEARCH_POLICY.secondaryClusterLimit);
-    });
-  }
-
-  return selected.slice(0, SEARCH_POLICY.finalSuggestionLimit);
 }
 
 function mergeItemsByUrl(itemGroups, searchBlacklistItems) {
