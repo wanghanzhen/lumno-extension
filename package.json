@@ -8,6 +8,7 @@
     "check:options": "node --check src/options/options.js",
     "test:blacklist": "node scripts/test-blacklist.js",
     "test:pinned-recent-blacklist": "node scripts/test-pinned-recent-blacklist.js",
+    "test:search-shared": "node scripts/test-search-shared.js",
     "test:search-suggestions": "node scripts/test-search-suggestions.js",
     "test:settings-sync": "node scripts/test-settings-sync.js",
     "test:storage-migration": "node scripts/test-storage-migration.js"

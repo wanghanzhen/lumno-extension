@@ -21,37 +21,41 @@
   const storageAreaName = storageArea
     ? (storageArea === (chrome && chrome.storage ? chrome.storage.sync : null) ? 'sync' : 'local')
     : null;
-
-  const THEME_STORAGE_KEY = '_x_extension_theme_mode_2024_unique_';
-  const LANGUAGE_STORAGE_KEY = '_x_extension_language_2024_unique_';
-  const LANGUAGE_MESSAGES_STORAGE_KEY = '_x_extension_language_messages_2024_unique_';
-  const RECENT_MODE_STORAGE_KEY = '_x_extension_recent_mode_2024_unique_';
-  const RECENT_COUNT_STORAGE_KEY = '_x_extension_recent_count_2024_unique_';
-  const NEWTAB_WIDTH_MODE_STORAGE_KEY = '_x_extension_newtab_width_mode_2026_unique_';
-  const NEWTAB_WORDMARK_VISIBLE_STORAGE_KEY = '_x_extension_newtab_wordmark_visible_2026_unique_';
-  const BOOKMARK_COUNT_STORAGE_KEY = '_x_extension_bookmark_count_2024_unique_';
-  const BOOKMARK_COLUMNS_STORAGE_KEY = '_x_extension_bookmark_columns_2024_unique_';
-  const DEFAULT_SEARCH_ENGINE_STORAGE_KEY = '_x_extension_default_search_engine_2024_unique_';
-  const SEARCH_RESULT_PRIORITY_STORAGE_KEY = '_x_extension_search_result_priority_2026_unique_';
-  const SEARCH_BLACKLIST_STORAGE_KEY = '_x_extension_search_blacklist_2026_unique_';
+  const STORAGE_KEYS = globalThis.LumnoStorageKeys || {};
+  const SEARCH_PROTOCOL = globalThis.LumnoSearchProtocol || {};
+  const SEARCH_ENGINE_UTILS = globalThis.LumnoSearchEngines || {};
+  const SEARCH_FAVICON_UTILS = globalThis.LumnoSearchFavicons || {};
+  const SITE_SEARCH_PROVIDER_UTILS = globalThis.LumnoSiteSearchProviders || {};
+  const THEME_STORAGE_KEY = STORAGE_KEYS.THEME_STORAGE_KEY || '_x_extension_theme_mode_2024_unique_';
+  const LANGUAGE_STORAGE_KEY = STORAGE_KEYS.LANGUAGE_STORAGE_KEY || '_x_extension_language_2024_unique_';
+  const LANGUAGE_MESSAGES_STORAGE_KEY = STORAGE_KEYS.LANGUAGE_MESSAGES_STORAGE_KEY || '_x_extension_language_messages_2024_unique_';
+  const RECENT_MODE_STORAGE_KEY = STORAGE_KEYS.RECENT_MODE_STORAGE_KEY || '_x_extension_recent_mode_2024_unique_';
+  const RECENT_COUNT_STORAGE_KEY = STORAGE_KEYS.RECENT_COUNT_STORAGE_KEY || '_x_extension_recent_count_2024_unique_';
+  const NEWTAB_WIDTH_MODE_STORAGE_KEY = STORAGE_KEYS.NEWTAB_WIDTH_MODE_STORAGE_KEY || '_x_extension_newtab_width_mode_2026_unique_';
+  const NEWTAB_WORDMARK_VISIBLE_STORAGE_KEY = STORAGE_KEYS.NEWTAB_WORDMARK_VISIBLE_STORAGE_KEY || '_x_extension_newtab_wordmark_visible_2026_unique_';
+  const BOOKMARK_COUNT_STORAGE_KEY = STORAGE_KEYS.BOOKMARK_COUNT_STORAGE_KEY || '_x_extension_bookmark_count_2024_unique_';
+  const BOOKMARK_COLUMNS_STORAGE_KEY = STORAGE_KEYS.BOOKMARK_COLUMNS_STORAGE_KEY || '_x_extension_bookmark_columns_2024_unique_';
+  const DEFAULT_SEARCH_ENGINE_STORAGE_KEY = STORAGE_KEYS.DEFAULT_SEARCH_ENGINE_STORAGE_KEY || '_x_extension_default_search_engine_2024_unique_';
+  const SEARCH_RESULT_PRIORITY_STORAGE_KEY = STORAGE_KEYS.SEARCH_RESULT_PRIORITY_STORAGE_KEY || '_x_extension_search_result_priority_2026_unique_';
+  const SEARCH_BLACKLIST_STORAGE_KEY = STORAGE_KEYS.SEARCH_BLACKLIST_STORAGE_KEY || '_x_extension_search_blacklist_2026_unique_';
   const BLACKLIST_UTILS = globalThis.LumnoBlacklistUtils || {};
-  const TAB_RANK_SCORE_DEBUG_STORAGE_KEY = '_x_extension_tab_rank_score_debug_2026_unique_';
+  const TAB_RANK_SCORE_DEBUG_STORAGE_KEY = STORAGE_KEYS.TAB_RANK_SCORE_DEBUG_STORAGE_KEY || '_x_extension_tab_rank_score_debug_2026_unique_';
   const NEWTAB_OPEN_TAB_SUGGESTION_LIMIT = 8;
-  const FAVICON_PERSIST_STORAGE_KEY = '_x_extension_favicon_url_cache_2024_unique_';
+  const FAVICON_PERSIST_STORAGE_KEY = STORAGE_KEYS.FAVICON_PERSIST_STORAGE_KEY || '_x_extension_favicon_url_cache_2024_unique_';
   const FAVICON_PERSIST_TTL_MS = 1000 * 60 * 60 * 24 * 14;
   const FAVICON_PERSIST_MAX_ENTRIES = 800;
   const FAVICON_REVALIDATE_INTERVAL_MS = 1000 * 60 * 60 * 12;
   const FAVICON_CACHE_BOOT_WAIT_MS = 120;
-  const FAVICON_DATA_PERSIST_STORAGE_KEY = '_x_extension_favicon_data_cache_2024_unique_';
+  const FAVICON_DATA_PERSIST_STORAGE_KEY = STORAGE_KEYS.FAVICON_DATA_PERSIST_STORAGE_KEY || '_x_extension_favicon_data_cache_2024_unique_';
   const FAVICON_DATA_PERSIST_MAX_ENTRIES = 220;
   const FAVICON_DATA_PERSIST_MAX_LENGTH = 24000;
-  const FAVICON_VISIT_DIRTY_STORAGE_KEY = '_x_extension_favicon_visit_dirty_2026_unique_';
+  const FAVICON_VISIT_DIRTY_STORAGE_KEY = STORAGE_KEYS.FAVICON_VISIT_DIRTY_STORAGE_KEY || '_x_extension_favicon_visit_dirty_2026_unique_';
   const FAVICON_VISIT_DIRTY_TTL_MS = 1000 * 60 * 60 * 24;
   const FAVICON_VISIT_DIRTY_MAX_ENTRIES = 600;
-  const NEWTAB_RECENT_CACHE_STORAGE_KEY = '_x_extension_newtab_recent_cache_2024_unique_';
-  const NEWTAB_BOOKMARK_CACHE_STORAGE_KEY = '_x_extension_newtab_bookmark_cache_2024_unique_';
-  const PINNED_RECENT_SITES_STORAGE_KEY = '_x_extension_newtab_pinned_recent_sites_2026_unique_';
-  const HIDDEN_RECENT_SITES_STORAGE_KEY = '_x_extension_newtab_hidden_recent_sites_2026_unique_';
+  const NEWTAB_RECENT_CACHE_STORAGE_KEY = STORAGE_KEYS.NEWTAB_RECENT_CACHE_STORAGE_KEY || '_x_extension_newtab_recent_cache_2024_unique_';
+  const NEWTAB_BOOKMARK_CACHE_STORAGE_KEY = STORAGE_KEYS.NEWTAB_BOOKMARK_CACHE_STORAGE_KEY || '_x_extension_newtab_bookmark_cache_2024_unique_';
+  const PINNED_RECENT_SITES_STORAGE_KEY = STORAGE_KEYS.PINNED_RECENT_SITES_STORAGE_KEY || '_x_extension_newtab_pinned_recent_sites_2026_unique_';
+  const HIDDEN_RECENT_SITES_STORAGE_KEY = STORAGE_KEYS.HIDDEN_RECENT_SITES_STORAGE_KEY || '_x_extension_newtab_hidden_recent_sites_2026_unique_';
   const MAX_PINNED_RECENT_SITES = 3;
   const MAX_HIDDEN_RECENT_SITES = 60;
   const NEWTAB_SECTION_CACHE_TTL_MS = 1000 * 60 * 5;
@@ -531,62 +535,7 @@
     updatedAt: 0
   };
 
-  const SEARCH_ENGINE_DEFS = [
-    {
-      id: 'google',
-      name: 'Google',
-      hostMatches: ['google.'],
-      searchUrl: (query) => `https://www.google.com/search?q=${encodeURIComponent(query)}`
-    },
-    {
-      id: 'bing',
-      name: 'Bing',
-      hostMatches: ['bing.com'],
-      searchUrl: (query) => `https://www.bing.com/search?q=${encodeURIComponent(query)}`
-    },
-    {
-      id: 'baidu',
-      name: '百度',
-      hostMatches: ['baidu.com'],
-      searchUrl: (query) => `https://www.baidu.com/s?wd=${encodeURIComponent(query)}`
-    },
-    {
-      id: 'duckduckgo',
-      name: 'DuckDuckGo',
-      hostMatches: ['duckduckgo.com'],
-      searchUrl: (query) => `https://duckduckgo.com/?q=${encodeURIComponent(query)}`
-    },
-    {
-      id: 'yahoo',
-      name: 'Yahoo',
-      hostMatches: ['search.yahoo.com'],
-      searchUrl: (query) => `https://search.yahoo.com/search?p=${encodeURIComponent(query)}`
-    },
-    {
-      id: 'yandex',
-      name: 'Yandex',
-      hostMatches: ['yandex.com'],
-      searchUrl: (query) => `https://yandex.com/search/?text=${encodeURIComponent(query)}`
-    },
-    {
-      id: 'sogou',
-      name: '搜狗',
-      hostMatches: ['sogou.com'],
-      searchUrl: (query) => `https://www.sogou.com/web?query=${encodeURIComponent(query)}`
-    },
-    {
-      id: 'so',
-      name: '360搜索',
-      hostMatches: ['so.com'],
-      searchUrl: (query) => `https://www.so.com/s?q=${encodeURIComponent(query)}`
-    },
-    {
-      id: 'shenma',
-      name: '神马',
-      hostMatches: ['sm.cn'],
-      searchUrl: (query) => `https://m.sm.cn/s?q=${encodeURIComponent(query)}`
-    }
-  ];
+  const SEARCH_ENGINE_DEFS = SEARCH_ENGINE_UTILS.SEARCH_ENGINE_DEFS || [];
 
   function resolveTheme(mode, mediaMatchesOverride) {
     if (mode === 'dark') {
@@ -1488,6 +1437,9 @@
   }
 
   function getSearchEngineById(id) {
+    if (SEARCH_ENGINE_UTILS.getSearchEngineById) {
+      return SEARCH_ENGINE_UTILS.getSearchEngineById(id);
+    }
     if (!id) {
       return null;
     }
@@ -1496,16 +1448,22 @@
 
   function buildDefaultSearchUrl(query) {
     const engine = getSearchEngineById(defaultSearchEngineState.id);
-    if (engine && typeof engine.searchUrl === 'function') {
-      return engine.searchUrl(query);
+    if (SEARCH_ENGINE_UTILS.buildSearchEngineUrl) {
+      return SEARCH_ENGINE_UTILS.buildSearchEngineUrl(engine || defaultSearchEngineState.id, query);
+    }
+    if (engine && engine.searchTemplate) {
+      return engine.searchTemplate.replace(/\{query\}/g, encodeURIComponent(query));
     }
     return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
   }
 
   function getDefaultSearchEngineThemeUrl() {
     const engine = getSearchEngineById(defaultSearchEngineState.id);
-    if (engine && typeof engine.searchUrl === 'function') {
-      return engine.searchUrl('test');
+    if (SEARCH_ENGINE_UTILS.buildSearchEngineUrl) {
+      return SEARCH_ENGINE_UTILS.buildSearchEngineUrl(engine || defaultSearchEngineState.id, 'test');
+    }
+    if (engine && engine.searchTemplate) {
+      return engine.searchTemplate.replace(/\{query\}/g, encodeURIComponent('test'));
     }
     return 'https://www.google.com';
   }
@@ -1517,7 +1475,10 @@
     const engine = getSearchEngineById(defaultSearchEngineState.id);
     if (engine) {
       try {
-        const host = new URL(engine.searchUrl('test')).hostname;
+        const url = SEARCH_ENGINE_UTILS.buildSearchEngineUrl
+          ? SEARCH_ENGINE_UTILS.buildSearchEngineUrl(engine, 'test')
+          : engine.searchTemplate.replace(/\{query\}/g, encodeURIComponent('test'));
+        const host = new URL(url).hostname;
         return `https://${host}/favicon.ico`;
       } catch (e) {
         return '';
@@ -2299,8 +2260,8 @@
       }
     });
   }
-  const SITE_SEARCH_STORAGE_KEY = '_x_extension_site_search_custom_2024_unique_';
-  const SITE_SEARCH_DISABLED_STORAGE_KEY = '_x_extension_site_search_disabled_2024_unique_';
+  const SITE_SEARCH_STORAGE_KEY = STORAGE_KEYS.SITE_SEARCH_STORAGE_KEY || '_x_extension_site_search_custom_2024_unique_';
+  const SITE_SEARCH_DISABLED_STORAGE_KEY = STORAGE_KEYS.SITE_SEARCH_DISABLED_STORAGE_KEY || '_x_extension_site_search_disabled_2024_unique_';
   migrateStorageIfNeeded([
     THEME_STORAGE_KEY,
     LANGUAGE_STORAGE_KEY,
@@ -2729,6 +2690,9 @@
   }
 
   function normalizeFaviconHost(hostname) {
+    if (SEARCH_FAVICON_UTILS.normalizeFaviconHost) {
+      return SEARCH_FAVICON_UTILS.normalizeFaviconHost(hostname);
+    }
     if (!hostname) {
       return '';
     }
@@ -5773,19 +5737,25 @@
   }
 
   function getGoogleFaviconUrl(hostname) {
+    if (SEARCH_FAVICON_UTILS.getGoogleFaviconUrl) {
+      return SEARCH_FAVICON_UTILS.getGoogleFaviconUrl(hostname, {
+        runtimeGetUrl: chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function'
+          ? chrome.runtime.getURL.bind(chrome.runtime)
+          : null,
+        size: FAVICON_GOOGLE_SIZE
+      });
+    }
     const normalized = normalizeFaviconHost(hostname);
     if (!normalized) {
       return '';
-    }
-    if (normalized === 'lumno.kubai.design') {
-      return (chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function')
-        ? chrome.runtime.getURL('public/assets/images/lumno.png')
-        : 'https://lumno.kubai.design/favicon.png';
     }
     return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(normalized)}&sz=${FAVICON_GOOGLE_SIZE}`;
   }
 
   function getFaviconIsUrl(hostname) {
+    if (SEARCH_FAVICON_UTILS.getFaviconIsUrl) {
+      return SEARCH_FAVICON_UTILS.getFaviconIsUrl(hostname);
+    }
     const normalized = normalizeFaviconHost(hostname);
     if (!normalized) {
       return '';
@@ -8004,20 +7974,22 @@
   }
 
   function getProviderIcon(provider) {
+    if (SEARCH_FAVICON_UTILS.getSiteSearchProviderIconUrl) {
+      return SEARCH_FAVICON_UTILS.getSiteSearchProviderIconUrl(provider, {
+        includeFaviconIsFallback: false,
+        runtimeGetUrl: chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function'
+          ? chrome.runtime.getURL.bind(chrome.runtime)
+          : null,
+        size: FAVICON_GOOGLE_SIZE
+      });
+    }
     if (provider && provider.icon) {
       return provider.icon;
     }
     if (provider && provider.iconUrl) {
       return provider.iconUrl;
     }
-    const template = provider && provider.template ? provider.template : '';
-    try {
-      const url = template.replace(/\{query\}/g, 'test');
-      const hostname = normalizeHost(new URL(url).hostname);
-      return getGoogleFaviconUrl(hostname);
-    } catch (e) {
-      return '';
-    }
+    return '';
   }
 
   function normalizeSiteSearchTemplate(template) {
@@ -8148,24 +8120,11 @@
   }
 
   function getSiteSearchDisplayName(provider) {
+    if (SITE_SEARCH_PROVIDER_UTILS.getSiteSearchDisplayName) {
+      return SITE_SEARCH_PROVIDER_UTILS.getSiteSearchDisplayName(provider, t, t('site_search_default', '站内'));
+    }
     if (!provider) {
       return t('site_search_default', '站内');
-    }
-    const key = String(provider.key || '').toLowerCase();
-    const keyToMessage = {
-      so: ['site_search_name_baidu', 'Baidu'],
-      zh: ['site_search_name_zhihu', 'Zhihu'],
-      db: ['site_search_name_douban', 'Douban'],
-      jd: ['site_search_name_juejin', 'Juejin'],
-      jj: ['site_search_name_juejin', 'Juejin'],
-      tb: ['site_search_name_taobao', 'Taobao'],
-      tm: ['site_search_name_tmall', 'Tmall'],
-      wx: ['site_search_name_wechat', 'WeChat'],
-      zw: ['site_search_name_wikipedia', 'Wikipedia']
-    };
-    const mapping = keyToMessage[key];
-    if (mapping) {
-      return t(mapping[0], mapping[1]);
     }
     return provider.name || provider.key || t('site_search_default', '站内');
   }
@@ -10301,10 +10260,10 @@
         renderSuggestions([], requestQuery);
       }, immediate ? 900 : 1300);
       chrome.runtime.sendMessage({
-        action: 'getSearchSuggestions',
+        action: SEARCH_PROTOCOL.SEARCH_ACTION_GET_SUGGESTIONS || 'getSearchSuggestions',
         query: requestQuery,
         context: 'newtab',
-        mode: 'classic'
+        mode: SEARCH_PROTOCOL.SEARCH_SUGGESTIONS_MODE_CLASSIC || 'classic'
       }, function(response) {
         if (suggestionRequestWatchdogTimer) {
           clearTimeout(suggestionRequestWatchdogTimer);

@@ -12,15 +12,45 @@ try {
 }
 
 try {
+  importScripts(chrome.runtime.getURL('src/shared/storage/keys.js'));
+} catch (error) {
+  console.warn('Lumno: failed to load storage keys.', error);
+}
+
+try {
   importScripts(chrome.runtime.getURL('src/shared/settings/overlay-tab-priority.js'));
 } catch (error) {
   console.warn('Lumno: failed to load settings utils.', error);
 }
 
 try {
+  importScripts(chrome.runtime.getURL('src/shared/search/protocol.js'));
+} catch (error) {
+  console.warn('Lumno: failed to load search protocol.', error);
+}
+
+try {
   importScripts(chrome.runtime.getURL('src/shared/search/suggestions.js'));
 } catch (error) {
   console.warn('Lumno: failed to load search suggestion utils.', error);
+}
+
+try {
+  importScripts(chrome.runtime.getURL('src/shared/search/engines.js'));
+} catch (error) {
+  console.warn('Lumno: failed to load search engines.', error);
+}
+
+try {
+  importScripts(chrome.runtime.getURL('src/shared/search/favicons.js'));
+} catch (error) {
+  console.warn('Lumno: failed to load favicon helpers.', error);
+}
+
+try {
+  importScripts(chrome.runtime.getURL('src/shared/search/site-search-providers.js'));
+} catch (error) {
+  console.warn('Lumno: failed to load site search providers helpers.', error);
 }
 
 try {
@@ -36,7 +66,8 @@ function isBrowserExtensionProtocol(protocol) {
     normalized === 'ms-browser-extension:';
 }
 
-const GLOBAL_PIP_OWNER_STORAGE_KEY = '_x_lumno_global_pip_owner_2026_';
+const STORAGE_KEYS = globalThis.LumnoStorageKeys || {};
+const GLOBAL_PIP_OWNER_STORAGE_KEY = STORAGE_KEYS.GLOBAL_PIP_OWNER_STORAGE_KEY || '_x_lumno_global_pip_owner_2026_';
 let globalPipOwnerCache = null;
 let globalPipOwnerCacheLoaded = false;
 
@@ -774,25 +805,29 @@ const storageAreaName = storageArea
   ? (storageArea === (chrome && chrome.storage ? chrome.storage.sync : null) ? 'sync' : 'local')
   : null;
 const STORAGE_MIGRATION_UTILS = globalThis.LumnoStorageMigration || {};
+const SEARCH_PROTOCOL = globalThis.LumnoSearchProtocol || {};
 const SEARCH_SUGGESTION_UTILS = globalThis.LumnoSearchSuggestions || {};
+const SEARCH_ENGINE_UTILS = globalThis.LumnoSearchEngines || {};
+const SEARCH_FAVICON_UTILS = globalThis.LumnoSearchFavicons || {};
+const SITE_SEARCH_PROVIDER_UTILS = globalThis.LumnoSiteSearchProviders || {};
 const SETTINGS_UTILS = globalThis.LumnoSettings || {};
-const RESTRICTED_ACTION_STORAGE_KEY = '_x_extension_restricted_action_2024_unique_';
-const OVERLAY_TAB_PRIORITY_STORAGE_KEY = '_x_extension_overlay_tab_priority_2024_unique_';
-const TAB_RANK_SCORE_DEBUG_STORAGE_KEY = '_x_extension_tab_rank_score_debug_2026_unique_';
-const DOCUMENT_PIP_ENABLED_STORAGE_KEY = '_x_extension_document_pip_enabled_2026_unique_';
-const PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY = '_x_extension_pinned_tab_recovery_enabled_2026_unique_';
-const FALLBACK_SHORTCUT_STORAGE_KEY = '_x_extension_fallback_hotkey_2024_unique_';
-const SEARCH_RESULT_PRIORITY_STORAGE_KEY = '_x_extension_search_result_priority_2026_unique_';
-const FAVICON_VISIT_DIRTY_STORAGE_KEY = '_x_extension_favicon_visit_dirty_2026_unique_';
+const RESTRICTED_ACTION_STORAGE_KEY = STORAGE_KEYS.RESTRICTED_ACTION_STORAGE_KEY || '_x_extension_restricted_action_2024_unique_';
+const OVERLAY_TAB_PRIORITY_STORAGE_KEY = STORAGE_KEYS.OVERLAY_TAB_PRIORITY_STORAGE_KEY || '_x_extension_overlay_tab_priority_2024_unique_';
+const TAB_RANK_SCORE_DEBUG_STORAGE_KEY = STORAGE_KEYS.TAB_RANK_SCORE_DEBUG_STORAGE_KEY || '_x_extension_tab_rank_score_debug_2026_unique_';
+const DOCUMENT_PIP_ENABLED_STORAGE_KEY = STORAGE_KEYS.DOCUMENT_PIP_ENABLED_STORAGE_KEY || '_x_extension_document_pip_enabled_2026_unique_';
+const PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY = STORAGE_KEYS.PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY || '_x_extension_pinned_tab_recovery_enabled_2026_unique_';
+const FALLBACK_SHORTCUT_STORAGE_KEY = STORAGE_KEYS.FALLBACK_SHORTCUT_STORAGE_KEY || '_x_extension_fallback_hotkey_2024_unique_';
+const SEARCH_RESULT_PRIORITY_STORAGE_KEY = STORAGE_KEYS.SEARCH_RESULT_PRIORITY_STORAGE_KEY || '_x_extension_search_result_priority_2026_unique_';
+const FAVICON_VISIT_DIRTY_STORAGE_KEY = STORAGE_KEYS.FAVICON_VISIT_DIRTY_STORAGE_KEY || '_x_extension_favicon_visit_dirty_2026_unique_';
 const FAVICON_VISIT_DIRTY_TTL_MS = 1000 * 60 * 60 * 24;
 const FAVICON_VISIT_DIRTY_MAX_ENTRIES = 600;
-const PINNED_TAB_SNAPSHOT_STORAGE_KEY = '_x_extension_pinned_tab_snapshot_2026_unique_';
-const REMOVED_AI_SYNC_STORAGE_KEYS = [
+const PINNED_TAB_SNAPSHOT_STORAGE_KEY = STORAGE_KEYS.PINNED_TAB_SNAPSHOT_STORAGE_KEY || '_x_extension_pinned_tab_snapshot_2026_unique_';
+const REMOVED_AI_SYNC_STORAGE_KEYS = STORAGE_KEYS.REMOVED_AI_SYNC_STORAGE_KEYS || [
   '_x_extension_ai_search_mode_2026_unique_',
   '_x_extension_ai_provider_2026_unique_',
   '_x_extension_ai_entitlement_cache_2026_unique_'
 ];
-const REMOVED_AI_LOCAL_STORAGE_KEYS = [
+const REMOVED_AI_LOCAL_STORAGE_KEYS = STORAGE_KEYS.REMOVED_AI_LOCAL_STORAGE_KEYS || [
   '_x_extension_ai_api_key_2026_unique_'
 ];
 const SHOW_SEARCH_COMMAND_NAME = 'show-search';
@@ -805,7 +840,7 @@ const TAB_SWITCH_WINDOW_DAY_MS = 24 * 60 * 60 * 1000;
 const TAB_SWITCH_HIGH_FREQ_SHORT_THRESHOLD = 2;
 const TAB_SWITCH_HIGH_FREQ_DAY_THRESHOLD = 5;
 const TAB_SWITCH_EVENT_HISTORY_LIMIT = 60;
-const TAB_SWITCH_STATS_STORAGE_KEY = '_x_extension_tab_switch_stats_2026_unique_';
+const TAB_SWITCH_STATS_STORAGE_KEY = STORAGE_KEYS.TAB_SWITCH_STATS_STORAGE_KEY || '_x_extension_tab_switch_stats_2026_unique_';
 const PINNED_TAB_SNAPSHOT_DEBOUNCE_MS = 600;
 const PINNED_TAB_RESTORE_MAX_TABS = 24;
 let restrictedActionCache = 'default';
@@ -3217,7 +3252,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
       }
     });
     return true;
-  } else if (request.action === 'getSearchSuggestions') {
+  } else if (request.action === (SEARCH_PROTOCOL.SEARCH_ACTION_GET_SUGGESTIONS || 'getSearchSuggestions')) {
     const query = request.query;
     const mode = normalizeSearchSuggestionsMode(request.mode);
     getSearchSuggestions(query, {
@@ -3490,11 +3525,11 @@ let bookmarkItemsCache = {
 let bookmarkTreeIndexPromise = null;
 let bookmarkItemsPromise = null;
 let bookmarkTreeCacheListenersBound = false;
-const SITE_SEARCH_STORAGE_KEY = '_x_extension_site_search_custom_2024_unique_';
-const SITE_SEARCH_DISABLED_STORAGE_KEY = '_x_extension_site_search_disabled_2024_unique_';
-const SEARCH_BLACKLIST_STORAGE_KEY = '_x_extension_search_blacklist_2026_unique_';
+const SITE_SEARCH_STORAGE_KEY = STORAGE_KEYS.SITE_SEARCH_STORAGE_KEY || '_x_extension_site_search_custom_2024_unique_';
+const SITE_SEARCH_DISABLED_STORAGE_KEY = STORAGE_KEYS.SITE_SEARCH_DISABLED_STORAGE_KEY || '_x_extension_site_search_disabled_2024_unique_';
+const SEARCH_BLACKLIST_STORAGE_KEY = STORAGE_KEYS.SEARCH_BLACKLIST_STORAGE_KEY || '_x_extension_search_blacklist_2026_unique_';
 const BLACKLIST_UTILS = globalThis.LumnoBlacklistUtils || {};
-const DEFAULT_SEARCH_ENGINE_STORAGE_KEY = '_x_extension_default_search_engine_2024_unique_';
+const DEFAULT_SEARCH_ENGINE_STORAGE_KEY = STORAGE_KEYS.DEFAULT_SEARCH_ENGINE_STORAGE_KEY || '_x_extension_default_search_engine_2024_unique_';
 migrateStorageIfNeeded([
   DOCUMENT_PIP_ENABLED_STORAGE_KEY,
   PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY,
@@ -3528,71 +3563,7 @@ function logBlockedLocalFavicon(url, source) {
   });
 }
 
-const SEARCH_ENGINE_DEFS = [
-  {
-    id: 'google',
-    name: 'Google',
-    hostMatches: ['google.'],
-    searchTemplate: 'https://www.google.com/search?q={query}',
-    searchUrl: (query) => `https://www.google.com/search?q=${encodeURIComponent(query)}`
-  },
-  {
-    id: 'bing',
-    name: 'Bing',
-    hostMatches: ['bing.com'],
-    searchTemplate: 'https://www.bing.com/search?q={query}',
-    searchUrl: (query) => `https://www.bing.com/search?q=${encodeURIComponent(query)}`
-  },
-  {
-    id: 'baidu',
-    name: 'Baidu',
-    hostMatches: ['baidu.com'],
-    searchTemplate: 'https://www.baidu.com/s?wd={query}',
-    searchUrl: (query) => `https://www.baidu.com/s?wd=${encodeURIComponent(query)}`
-  },
-  {
-    id: 'duckduckgo',
-    name: 'DuckDuckGo',
-    hostMatches: ['duckduckgo.com'],
-    searchTemplate: 'https://duckduckgo.com/?q={query}',
-    searchUrl: (query) => `https://duckduckgo.com/?q=${encodeURIComponent(query)}`
-  },
-  {
-    id: 'yahoo',
-    name: 'Yahoo',
-    hostMatches: ['search.yahoo.com'],
-    searchTemplate: 'https://search.yahoo.com/search?p={query}',
-    searchUrl: (query) => `https://search.yahoo.com/search?p=${encodeURIComponent(query)}`
-  },
-  {
-    id: 'yandex',
-    name: 'Yandex',
-    hostMatches: ['yandex.com'],
-    searchTemplate: 'https://yandex.com/search/?text={query}',
-    searchUrl: (query) => `https://yandex.com/search/?text=${encodeURIComponent(query)}`
-  },
-  {
-    id: 'sogou',
-    name: '搜狗',
-    hostMatches: ['sogou.com'],
-    searchTemplate: 'https://www.sogou.com/web?query={query}',
-    searchUrl: (query) => `https://www.sogou.com/web?query=${encodeURIComponent(query)}`
-  },
-  {
-    id: 'so',
-    name: '360搜索',
-    hostMatches: ['so.com'],
-    searchTemplate: 'https://www.so.com/s?q={query}',
-    searchUrl: (query) => `https://www.so.com/s?q=${encodeURIComponent(query)}`
-  },
-  {
-    id: 'shenma',
-    name: '神马',
-    hostMatches: ['sm.cn'],
-    searchTemplate: 'https://m.sm.cn/s?q={query}',
-    searchUrl: (query) => `https://m.sm.cn/s?q=${encodeURIComponent(query)}`
-  }
-];
+const SEARCH_ENGINE_DEFS = SEARCH_ENGINE_UTILS.SEARCH_ENGINE_DEFS || [];
 
 let defaultSearchEngineState = {
   id: '',
@@ -3616,19 +3587,25 @@ function arrayBufferToBase64(buffer) {
 }
 
 function getGoogleFaviconUrl(hostname) {
+  if (SEARCH_FAVICON_UTILS.getGoogleFaviconUrl) {
+    return SEARCH_FAVICON_UTILS.getGoogleFaviconUrl(hostname, {
+      runtimeGetUrl: chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function'
+        ? chrome.runtime.getURL.bind(chrome.runtime)
+        : null,
+      size: FAVICON_GOOGLE_SIZE
+    });
+  }
   const normalized = normalizeFaviconHost(hostname);
   if (!normalized) {
     return '';
-  }
-  if (normalized === 'lumno.kubai.design') {
-    return (chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function')
-      ? chrome.runtime.getURL('public/assets/images/lumno.png')
-      : 'https://lumno.kubai.design/favicon.png';
   }
   return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(normalized)}&sz=${FAVICON_GOOGLE_SIZE}`;
 }
 
 function getFaviconIsUrl(hostname) {
+  if (SEARCH_FAVICON_UTILS.getFaviconIsUrl) {
+    return SEARCH_FAVICON_UTILS.getFaviconIsUrl(hostname);
+  }
   const normalized = normalizeFaviconHost(hostname);
   if (!normalized) {
     return '';
@@ -3637,18 +3614,19 @@ function getFaviconIsUrl(hostname) {
 }
 
 function normalizeHost(hostname) {
+  if (SEARCH_ENGINE_UTILS.normalizeSearchEngineHost) {
+    return SEARCH_ENGINE_UTILS.normalizeSearchEngineHost(hostname);
+  }
   if (!hostname) {
     return '';
   }
-  const lower = String(hostname).toLowerCase();
-  const stripped = lower.replace(/^www\./i, '');
-  if (stripped === 'my.feishu.cn') {
-    return 'feishu.cn';
-  }
-  return stripped;
+  return String(hostname).toLowerCase().replace(/^www\./i, '');
 }
 
 function getSearchEngineByHostname(hostname) {
+  if (SEARCH_ENGINE_UTILS.getSearchEngineByHostname) {
+    return SEARCH_ENGINE_UTILS.getSearchEngineByHostname(hostname);
+  }
   const normalized = normalizeHost(hostname);
   if (!normalized) {
     return null;
@@ -3659,6 +3637,9 @@ function getSearchEngineByHostname(hostname) {
 }
 
 function getSearchEngineById(id) {
+  if (SEARCH_ENGINE_UTILS.getSearchEngineById) {
+    return SEARCH_ENGINE_UTILS.getSearchEngineById(id);
+  }
   if (!id) {
     return null;
   }
@@ -3696,39 +3677,10 @@ function loadDefaultSearchEngineState() {
 }
 
 function isSearchEngineResultUrl(url) {
-  try {
-    const parsedUrl = new URL(url);
-    const hostname = parsedUrl.hostname.toLowerCase();
-    const path = parsedUrl.pathname.toLowerCase();
-    const isKnownHost = SEARCH_ENGINE_DEFS.some((engine) =>
-      engine.hostMatches.some((match) => hostname.includes(match))
-    );
-    if (!isKnownHost) {
-      return false;
-    }
-    const searchPaths = [
-      '/search',
-      '/s',
-      '/s/2',
-      '/web',
-      '/?'
-    ];
-    if (path === '/' && parsedUrl.searchParams.has('q')) {
-      return true;
-    }
-    if (path === '/' && parsedUrl.searchParams.has('wd')) {
-      return true;
-    }
-    if (path === '/' && parsedUrl.searchParams.has('query')) {
-      return true;
-    }
-    if (searchPaths.some((prefix) => path.startsWith(prefix))) {
-      return true;
-    }
-    return false;
-  } catch (e) {
-    return false;
+  if (SEARCH_ENGINE_UTILS.isSearchEngineResultUrl) {
+    return SEARCH_ENGINE_UTILS.isSearchEngineResultUrl(url);
   }
+  return false;
 }
 
 function updateDefaultSearchEngineFromUrl(url) {
@@ -3756,8 +3708,11 @@ function updateDefaultSearchEngineFromUrl(url) {
 
 function buildDefaultSearchUrl(query) {
   const engine = getSearchEngineById(defaultSearchEngineState.id);
-  if (engine && typeof engine.searchUrl === 'function') {
-    return engine.searchUrl(query);
+  if (SEARCH_ENGINE_UTILS.buildSearchEngineUrl) {
+    return SEARCH_ENGINE_UTILS.buildSearchEngineUrl(engine || defaultSearchEngineState.id, query);
+  }
+  if (engine && engine.searchTemplate) {
+    return engine.searchTemplate.replace(/\{query\}/g, encodeURIComponent(query));
   }
   return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
 }
@@ -3852,8 +3807,11 @@ function getDirectNavigationUrl(input) {
 
 function getDefaultSearchEngineThemeUrl() {
   const engine = getSearchEngineById(defaultSearchEngineState.id);
-  if (engine && typeof engine.searchUrl === 'function') {
-    return engine.searchUrl('test');
+  if (SEARCH_ENGINE_UTILS.buildSearchEngineUrl) {
+    return SEARCH_ENGINE_UTILS.buildSearchEngineUrl(engine || defaultSearchEngineState.id, 'test');
+  }
+  if (engine && engine.searchTemplate) {
+    return engine.searchTemplate.replace(/\{query\}/g, encodeURIComponent('test'));
   }
   return 'https://www.google.com';
 }
@@ -3865,7 +3823,10 @@ function getDefaultSearchEngineFaviconUrl() {
   const engine = getSearchEngineById(defaultSearchEngineState.id);
   if (engine) {
     try {
-      const host = new URL(engine.searchUrl('test')).hostname;
+      const url = SEARCH_ENGINE_UTILS.buildSearchEngineUrl
+        ? SEARCH_ENGINE_UTILS.buildSearchEngineUrl(engine, 'test')
+        : engine.searchTemplate.replace(/\{query\}/g, encodeURIComponent('test'));
+      const host = new URL(url).hostname;
       return `https://${host}/favicon.ico`;
     } catch (e) {
       return '';
@@ -4244,6 +4205,9 @@ function isBlockedLocalFaviconUrl(url) {
 }
 
 function normalizeFaviconHost(hostname) {
+  if (SEARCH_FAVICON_UTILS.normalizeFaviconHost) {
+    return SEARCH_FAVICON_UTILS.normalizeFaviconHost(hostname);
+  }
   if (!hostname) {
     return '';
   }
@@ -6657,6 +6621,9 @@ function mergeItemsByUrl(itemGroups, searchBlacklistItems) {
 
 // Function to get search suggestions from history and top sites
 function normalizeSearchSuggestionsMode(mode) {
+  if (SEARCH_PROTOCOL.normalizeSearchSuggestionsMode) {
+    return SEARCH_PROTOCOL.normalizeSearchSuggestionsMode(mode);
+  }
   if (SEARCH_SUGGESTION_UTILS.normalizeSearchSuggestionsMode) {
     return SEARCH_SUGGESTION_UTILS.normalizeSearchSuggestionsMode(mode);
   }
@@ -6983,15 +6950,15 @@ async function getSearchSuggestions(query, options) {
   const requestedTabZoomFactor = Number.isFinite(requestedTabZoomFactorRaw) && requestedTabZoomFactorRaw > 0
     ? requestedTabZoomFactorRaw
     : 1;
-  const THEME_STORAGE_KEY = '_x_extension_theme_mode_2024_unique_';
-  const LANGUAGE_STORAGE_KEY = '_x_extension_language_2024_unique_';
-  const LANGUAGE_MESSAGES_STORAGE_KEY = '_x_extension_language_messages_2024_unique_';
-  const DEFAULT_SEARCH_ENGINE_STORAGE_KEY = '_x_extension_default_search_engine_2024_unique_';
-  const SEARCH_RESULT_PRIORITY_STORAGE_KEY = '_x_extension_search_result_priority_2026_unique_';
-  const SEARCH_BLACKLIST_STORAGE_KEY = '_x_extension_search_blacklist_2026_unique_';
-  const OVERLAY_SIZE_MODE_STORAGE_KEY = '_x_extension_overlay_size_mode_2026_unique_';
-  const OVERLAY_TAB_PRIORITY_STORAGE_KEY = '_x_extension_overlay_tab_priority_2024_unique_';
-  const TAB_RANK_SCORE_DEBUG_STORAGE_KEY = '_x_extension_tab_rank_score_debug_2026_unique_';
+  const THEME_STORAGE_KEY = STORAGE_KEYS.THEME_STORAGE_KEY || '_x_extension_theme_mode_2024_unique_';
+  const LANGUAGE_STORAGE_KEY = STORAGE_KEYS.LANGUAGE_STORAGE_KEY || '_x_extension_language_2024_unique_';
+  const LANGUAGE_MESSAGES_STORAGE_KEY = STORAGE_KEYS.LANGUAGE_MESSAGES_STORAGE_KEY || '_x_extension_language_messages_2024_unique_';
+  const DEFAULT_SEARCH_ENGINE_STORAGE_KEY = STORAGE_KEYS.DEFAULT_SEARCH_ENGINE_STORAGE_KEY || '_x_extension_default_search_engine_2024_unique_';
+  const SEARCH_RESULT_PRIORITY_STORAGE_KEY = STORAGE_KEYS.SEARCH_RESULT_PRIORITY_STORAGE_KEY || '_x_extension_search_result_priority_2026_unique_';
+  const SEARCH_BLACKLIST_STORAGE_KEY = STORAGE_KEYS.SEARCH_BLACKLIST_STORAGE_KEY || '_x_extension_search_blacklist_2026_unique_';
+  const OVERLAY_SIZE_MODE_STORAGE_KEY = STORAGE_KEYS.OVERLAY_SIZE_MODE_STORAGE_KEY || '_x_extension_overlay_size_mode_2026_unique_';
+  const OVERLAY_TAB_PRIORITY_STORAGE_KEY = STORAGE_KEYS.OVERLAY_TAB_PRIORITY_STORAGE_KEY || '_x_extension_overlay_tab_priority_2024_unique_';
+  const TAB_RANK_SCORE_DEBUG_STORAGE_KEY = STORAGE_KEYS.TAB_RANK_SCORE_DEBUG_STORAGE_KEY || '_x_extension_tab_rank_score_debug_2026_unique_';
   const storageArea = (chrome && chrome.storage && chrome.storage.sync)
     ? chrome.storage.sync
     : (chrome && chrome.storage ? chrome.storage.local : null);
@@ -8749,7 +8716,7 @@ async function getSearchSuggestions(query, options) {
           }
           if (latestOverlayQuery) {
             chrome.runtime.sendMessage({
-              action: 'getSearchSuggestions',
+              action: SEARCH_PROTOCOL.SEARCH_ACTION_GET_SUGGESTIONS || 'getSearchSuggestions',
               query: latestOverlayQuery,
               context: 'overlay'
             }, (refreshResponse) => {
@@ -9460,6 +9427,9 @@ async function getSearchSuggestions(query, options) {
     }
 
     function normalizeFaviconHost(hostname) {
+      if (SEARCH_FAVICON_UTILS.normalizeFaviconHost) {
+        return SEARCH_FAVICON_UTILS.normalizeFaviconHost(hostname);
+      }
       if (!hostname) {
         return '';
       }
@@ -9471,19 +9441,25 @@ async function getSearchSuggestions(query, options) {
     }
 
     function getGoogleFaviconUrl(hostname) {
+      if (SEARCH_FAVICON_UTILS.getGoogleFaviconUrl) {
+        return SEARCH_FAVICON_UTILS.getGoogleFaviconUrl(hostname, {
+          runtimeGetUrl: chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function'
+            ? chrome.runtime.getURL.bind(chrome.runtime)
+            : null,
+          size: 128
+        });
+      }
       const normalized = normalizeFaviconHost(hostname);
       if (!normalized) {
         return '';
-      }
-      if (normalized === 'lumno.kubai.design') {
-        return (chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function')
-          ? chrome.runtime.getURL('public/assets/images/lumno.png')
-          : 'https://lumno.kubai.design/favicon.png';
       }
       return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(normalized)}&sz=128`;
     }
 
     function getFaviconIsUrl(hostname) {
+      if (SEARCH_FAVICON_UTILS.getFaviconIsUrl) {
+        return SEARCH_FAVICON_UTILS.getFaviconIsUrl(hostname);
+      }
       const normalized = normalizeFaviconHost(hostname);
       if (!normalized) {
         return '';
@@ -11531,20 +11507,22 @@ async function getSearchSuggestions(query, options) {
     }
 
     function getProviderIcon(provider) {
+      if (SEARCH_FAVICON_UTILS.getSiteSearchProviderIconUrl) {
+        return SEARCH_FAVICON_UTILS.getSiteSearchProviderIconUrl(provider, {
+          includeFaviconIsFallback: true,
+          runtimeGetUrl: chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function'
+            ? chrome.runtime.getURL.bind(chrome.runtime)
+            : null,
+          size: FAVICON_GOOGLE_SIZE
+        });
+      }
       if (provider && provider.icon) {
         return provider.icon;
       }
       if (provider && provider.iconUrl) {
         return provider.iconUrl;
       }
-      const template = provider && provider.template ? provider.template : '';
-      try {
-        const url = template.replace(/\{query\}/g, 'test');
-        const hostname = normalizeHost(new URL(url).hostname);
-        return getGoogleFaviconUrl(hostname) || getFaviconIsUrl(hostname);
-      } catch (e) {
-        return '';
-      }
+      return '';
     }
 
     function mergeCustomProvidersLocal(baseItems, customItems) {
@@ -11651,10 +11629,10 @@ async function getSearchSuggestions(query, options) {
         siteSearchProvidersCache = mergeCustomProvidersLocal(baseItems, customItems);
         if (latestOverlayQuery) {
           chrome.runtime.sendMessage({
-            action: 'getSearchSuggestions',
+            action: SEARCH_PROTOCOL.SEARCH_ACTION_GET_SUGGESTIONS || 'getSearchSuggestions',
             query: latestOverlayQuery,
             context: 'overlay',
-            mode: 'classic'
+            mode: SEARCH_PROTOCOL.SEARCH_SUGGESTIONS_MODE_CLASSIC || 'classic'
           }, function(response) {
             if (response && response.suggestions) {
               updateSearchSuggestions(response.suggestions, latestOverlayQuery);
@@ -11666,24 +11644,11 @@ async function getSearchSuggestions(query, options) {
     chrome.storage.onChanged.addListener(siteSearchStorageListener);
 
     function getSiteSearchDisplayName(provider) {
+      if (SITE_SEARCH_PROVIDER_UTILS.getSiteSearchDisplayName) {
+        return SITE_SEARCH_PROVIDER_UTILS.getSiteSearchDisplayName(provider, t, t('site_search_default', '站内'));
+      }
       if (!provider) {
         return t('site_search_default', '站内');
-      }
-      const key = String(provider.key || '').toLowerCase();
-      const keyToMessage = {
-        so: ['site_search_name_baidu', 'Baidu'],
-        zh: ['site_search_name_zhihu', 'Zhihu'],
-        db: ['site_search_name_douban', 'Douban'],
-        jd: ['site_search_name_juejin', 'Juejin'],
-        jj: ['site_search_name_juejin', 'Juejin'],
-        tb: ['site_search_name_taobao', 'Taobao'],
-        tm: ['site_search_name_tmall', 'Tmall'],
-        wx: ['site_search_name_wechat', 'WeChat'],
-        zw: ['site_search_name_wikipedia', 'Wikipedia']
-      };
-      const mapping = keyToMessage[key];
-      if (mapping) {
-        return t(mapping[0], mapping[1]);
       }
       return provider.name || provider.key || t('site_search_default', '站内');
     }
@@ -12112,10 +12077,10 @@ async function getSearchSuggestions(query, options) {
         return;
       }
       chrome.runtime.sendMessage({
-        action: 'getSearchSuggestions',
+        action: SEARCH_PROTOCOL.SEARCH_ACTION_GET_SUGGESTIONS || 'getSearchSuggestions',
         query: query,
         context: 'overlay',
-        mode: 'classic'
+        mode: SEARCH_PROTOCOL.SEARCH_SUGGESTIONS_MODE_CLASSIC || 'classic'
       }, function(response) {
         if (response && response.suggestions) {
           updateSearchSuggestions(response.suggestions, query);
@@ -12151,10 +12116,10 @@ async function getSearchSuggestions(query, options) {
           return;
         }
         chrome.runtime.sendMessage({
-          action: 'getSearchSuggestions',
+          action: SEARCH_PROTOCOL.SEARCH_ACTION_GET_SUGGESTIONS || 'getSearchSuggestions',
           query: query,
           context: 'overlay',
-          mode: 'classic'
+          mode: SEARCH_PROTOCOL.SEARCH_SUGGESTIONS_MODE_CLASSIC || 'classic'
         }, function(response) {
           if (response && response.suggestions) {
             updateSearchSuggestions(response.suggestions, query);
@@ -12220,10 +12185,10 @@ async function getSearchSuggestions(query, options) {
         }
         // Get search suggestions
         chrome.runtime.sendMessage({
-          action: 'getSearchSuggestions',
+          action: SEARCH_PROTOCOL.SEARCH_ACTION_GET_SUGGESTIONS || 'getSearchSuggestions',
           query: query,
           context: 'overlay',
-          mode: 'classic'
+          mode: SEARCH_PROTOCOL.SEARCH_SUGGESTIONS_MODE_CLASSIC || 'classic'
         }, function(response) {
           if (overlay && overlay.dataset) {
             overlay.dataset.debugCallbackQuery = query;
@@ -14936,10 +14901,10 @@ async function getSearchSuggestions(query, options) {
                   return;
                 }
                 chrome.runtime.sendMessage({
-                  action: 'getSearchSuggestions',
+                  action: SEARCH_PROTOCOL.SEARCH_ACTION_GET_SUGGESTIONS || 'getSearchSuggestions',
                   query: queryToRefresh,
                   context: 'overlay',
-                  mode: 'classic'
+                  mode: SEARCH_PROTOCOL.SEARCH_SUGGESTIONS_MODE_CLASSIC || 'classic'
                 }, function(nextResponse) {
                   if (chrome.runtime && chrome.runtime.lastError) {
                     return;

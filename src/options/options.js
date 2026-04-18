@@ -127,6 +127,9 @@
   const storageAreaName = storageArea
     ? (storageArea === (chrome && chrome.storage ? chrome.storage.sync : null) ? 'sync' : 'local')
     : null;
+  const STORAGE_KEYS = globalThis.LumnoStorageKeys || {};
+  const SEARCH_FAVICON_UTILS = globalThis.LumnoSearchFavicons || {};
+  const SITE_SEARCH_PROVIDER_UTILS = globalThis.LumnoSiteSearchProviders || {};
 
   function getRiSvg(id, sizeClass) {
     const size = sizeClass || 'ri-size-12';
@@ -142,6 +145,14 @@
   }
 
   function getGoogleFaviconUrl(hostname) {
+    if (SEARCH_FAVICON_UTILS.getGoogleFaviconUrl) {
+      return SEARCH_FAVICON_UTILS.getGoogleFaviconUrl(hostname, {
+        runtimeGetUrl: chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function'
+          ? chrome.runtime.getURL.bind(chrome.runtime)
+          : null,
+        size: 64
+      });
+    }
     const normalized = normalizeHost(hostname);
     if (!normalized) {
       return '';
@@ -150,26 +161,27 @@
   }
 
   function getProviderIconUrl(provider) {
+    if (SEARCH_FAVICON_UTILS.getSiteSearchProviderIconUrl) {
+      return SEARCH_FAVICON_UTILS.getSiteSearchProviderIconUrl(provider, {
+        runtimeGetUrl: chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function'
+          ? chrome.runtime.getURL.bind(chrome.runtime)
+          : null,
+        size: 64
+      });
+    }
     if (provider && provider.icon) {
       return String(provider.icon).trim();
     }
     if (provider && provider.iconUrl) {
       return String(provider.iconUrl).trim();
     }
-    const template = provider && provider.template ? String(provider.template) : '';
-    if (!template) {
-      return '';
-    }
-    try {
-      const resolvedUrl = template.replace(/\{query\}/g, 'test');
-      const host = normalizeHost(new URL(resolvedUrl).hostname);
-      return getGoogleFaviconUrl(host);
-    } catch (e) {
-      return '';
-    }
+    return '';
   }
 
   function getSiteSearchIconCacheKey(provider) {
+    if (SEARCH_FAVICON_UTILS.getSiteSearchProviderHost) {
+      return SEARCH_FAVICON_UTILS.getSiteSearchProviderHost(provider);
+    }
     if (!provider) {
       return '';
     }
@@ -260,31 +272,31 @@
     return siteSearchIconCache.get(cacheKey) || '';
   }
 
-  const THEME_STORAGE_KEY = '_x_extension_theme_mode_2024_unique_';
-  const LANGUAGE_STORAGE_KEY = '_x_extension_language_2024_unique_';
-  const LANGUAGE_MESSAGES_STORAGE_KEY = '_x_extension_language_messages_2024_unique_';
-  const RECENT_MODE_STORAGE_KEY = '_x_extension_recent_mode_2024_unique_';
-  const RECENT_COUNT_STORAGE_KEY = '_x_extension_recent_count_2024_unique_';
-  const NEWTAB_WIDTH_MODE_STORAGE_KEY = '_x_extension_newtab_width_mode_2026_unique_';
-  const OVERLAY_SIZE_MODE_STORAGE_KEY = '_x_extension_overlay_size_mode_2026_unique_';
-  const BOOKMARK_COUNT_STORAGE_KEY = '_x_extension_bookmark_count_2024_unique_';
-  const BOOKMARK_COLUMNS_STORAGE_KEY = '_x_extension_bookmark_columns_2024_unique_';
-  const AUTO_PIP_ENABLED_STORAGE_KEY = '_x_extension_auto_pip_enabled_2026_unique_';
-  const DOCUMENT_PIP_ENABLED_STORAGE_KEY = '_x_extension_document_pip_enabled_2026_unique_';
-  const PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY = '_x_extension_pinned_tab_recovery_enabled_2026_unique_';
-  const OVERLAY_TAB_PRIORITY_STORAGE_KEY = '_x_extension_overlay_tab_priority_2024_unique_';
-  const NEWTAB_WORDMARK_VISIBLE_STORAGE_KEY = '_x_extension_newtab_wordmark_visible_2026_unique_';
-  const RESTRICTED_ACTION_STORAGE_KEY = '_x_extension_restricted_action_2024_unique_';
-  const SEARCH_RESULT_PRIORITY_STORAGE_KEY = '_x_extension_search_result_priority_2026_unique_';
-  const SITE_SEARCH_ICON_CACHE_STORAGE_KEY = '_x_extension_site_search_icon_cache_2026_unique_';
-  const FALLBACK_SHORTCUT_STORAGE_KEY = '_x_extension_fallback_hotkey_2024_unique_';
-  const SITE_SEARCH_STORAGE_KEY = '_x_extension_site_search_custom_2024_unique_';
-  const SITE_SEARCH_DISABLED_STORAGE_KEY = '_x_extension_site_search_disabled_2024_unique_';
-  const SEARCH_BLACKLIST_STORAGE_KEY = '_x_extension_search_blacklist_2026_unique_';
+  const THEME_STORAGE_KEY = STORAGE_KEYS.THEME_STORAGE_KEY || '_x_extension_theme_mode_2024_unique_';
+  const LANGUAGE_STORAGE_KEY = STORAGE_KEYS.LANGUAGE_STORAGE_KEY || '_x_extension_language_2024_unique_';
+  const LANGUAGE_MESSAGES_STORAGE_KEY = STORAGE_KEYS.LANGUAGE_MESSAGES_STORAGE_KEY || '_x_extension_language_messages_2024_unique_';
+  const RECENT_MODE_STORAGE_KEY = STORAGE_KEYS.RECENT_MODE_STORAGE_KEY || '_x_extension_recent_mode_2024_unique_';
+  const RECENT_COUNT_STORAGE_KEY = STORAGE_KEYS.RECENT_COUNT_STORAGE_KEY || '_x_extension_recent_count_2024_unique_';
+  const NEWTAB_WIDTH_MODE_STORAGE_KEY = STORAGE_KEYS.NEWTAB_WIDTH_MODE_STORAGE_KEY || '_x_extension_newtab_width_mode_2026_unique_';
+  const OVERLAY_SIZE_MODE_STORAGE_KEY = STORAGE_KEYS.OVERLAY_SIZE_MODE_STORAGE_KEY || '_x_extension_overlay_size_mode_2026_unique_';
+  const BOOKMARK_COUNT_STORAGE_KEY = STORAGE_KEYS.BOOKMARK_COUNT_STORAGE_KEY || '_x_extension_bookmark_count_2024_unique_';
+  const BOOKMARK_COLUMNS_STORAGE_KEY = STORAGE_KEYS.BOOKMARK_COLUMNS_STORAGE_KEY || '_x_extension_bookmark_columns_2024_unique_';
+  const AUTO_PIP_ENABLED_STORAGE_KEY = STORAGE_KEYS.AUTO_PIP_ENABLED_STORAGE_KEY || '_x_extension_auto_pip_enabled_2026_unique_';
+  const DOCUMENT_PIP_ENABLED_STORAGE_KEY = STORAGE_KEYS.DOCUMENT_PIP_ENABLED_STORAGE_KEY || '_x_extension_document_pip_enabled_2026_unique_';
+  const PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY = STORAGE_KEYS.PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY || '_x_extension_pinned_tab_recovery_enabled_2026_unique_';
+  const OVERLAY_TAB_PRIORITY_STORAGE_KEY = STORAGE_KEYS.OVERLAY_TAB_PRIORITY_STORAGE_KEY || '_x_extension_overlay_tab_priority_2024_unique_';
+  const NEWTAB_WORDMARK_VISIBLE_STORAGE_KEY = STORAGE_KEYS.NEWTAB_WORDMARK_VISIBLE_STORAGE_KEY || '_x_extension_newtab_wordmark_visible_2026_unique_';
+  const RESTRICTED_ACTION_STORAGE_KEY = STORAGE_KEYS.RESTRICTED_ACTION_STORAGE_KEY || '_x_extension_restricted_action_2024_unique_';
+  const SEARCH_RESULT_PRIORITY_STORAGE_KEY = STORAGE_KEYS.SEARCH_RESULT_PRIORITY_STORAGE_KEY || '_x_extension_search_result_priority_2026_unique_';
+  const SITE_SEARCH_ICON_CACHE_STORAGE_KEY = STORAGE_KEYS.SITE_SEARCH_ICON_CACHE_STORAGE_KEY || '_x_extension_site_search_icon_cache_2026_unique_';
+  const FALLBACK_SHORTCUT_STORAGE_KEY = STORAGE_KEYS.FALLBACK_SHORTCUT_STORAGE_KEY || '_x_extension_fallback_hotkey_2024_unique_';
+  const SITE_SEARCH_STORAGE_KEY = STORAGE_KEYS.SITE_SEARCH_STORAGE_KEY || '_x_extension_site_search_custom_2024_unique_';
+  const SITE_SEARCH_DISABLED_STORAGE_KEY = STORAGE_KEYS.SITE_SEARCH_DISABLED_STORAGE_KEY || '_x_extension_site_search_disabled_2024_unique_';
+  const SEARCH_BLACKLIST_STORAGE_KEY = STORAGE_KEYS.SEARCH_BLACKLIST_STORAGE_KEY || '_x_extension_search_blacklist_2026_unique_';
   const BLACKLIST_UTILS = globalThis.LumnoBlacklistUtils || {};
   const STORAGE_MIGRATION_UTILS = globalThis.LumnoStorageMigration || {};
   const SETTINGS_UTILS = globalThis.LumnoSettings || {};
-  const DEFAULT_SEARCH_ENGINE_STORAGE_KEY = '_x_extension_default_search_engine_2024_unique_';
+  const DEFAULT_SEARCH_ENGINE_STORAGE_KEY = STORAGE_KEYS.DEFAULT_SEARCH_ENGINE_STORAGE_KEY || '_x_extension_default_search_engine_2024_unique_';
   const SYNC_META_KEY = '_x_extension_sync_meta_2024_unique_';
   const SYNC_KEYS = [
     THEME_STORAGE_KEY,
@@ -3978,26 +3990,14 @@
       return Boolean(item);
     }
     function getLocalizedBuiltinProviderName(item) {
-      if (!item || item._xIsCustom) {
-        return item && (item.name || item.key) ? (item.name || item.key) : '';
+      if (item && !item._xIsCustom && SITE_SEARCH_PROVIDER_UTILS.getSiteSearchDisplayName) {
+        return SITE_SEARCH_PROVIDER_UTILS.getSiteSearchDisplayName(
+          item,
+          getMessage,
+          getMessage('site_search_default', '站内')
+        );
       }
-      const key = String(item.key || '').toLowerCase();
-      const keyToMessage = {
-        so: ['site_search_name_baidu', 'Baidu'],
-        zh: ['site_search_name_zhihu', 'Zhihu'],
-        db: ['site_search_name_douban', 'Douban'],
-        jj: ['site_search_name_juejin', 'Juejin'],
-        jd: ['site_search_name_juejin', 'Juejin'],
-        tb: ['site_search_name_taobao', 'Taobao'],
-        tm: ['site_search_name_tmall', 'Tmall'],
-        wx: ['site_search_name_wechat', 'WeChat'],
-        zw: ['site_search_name_wikipedia', 'Wikipedia']
-      };
-      const mapping = keyToMessage[key];
-      if (!mapping) {
-        return item.name || item.key;
-      }
-      return getMessage(mapping[0], mapping[1]);
+      return item && (item.name || item.key) ? (item.name || item.key) : '';
     }
     const renderItem = (item, list) => {
       const row = document.createElement('div');
