@@ -57,6 +57,117 @@ function run() {
     'topSite',
     'newer duplicates should replace older entries during merge'
   );
+
+  assert.equal(
+    searchSuggestions.buildBlacklistProbeUrlFromTemplate(
+      'https://example.com/search?q={query}',
+      'lumno docs'
+    ),
+    'https://example.com/search?q=lumno%20docs',
+    'blacklist probe URLs should expand the shared {query} placeholder'
+  );
+
+  assert.equal(
+    searchSuggestions.isSuggestionBlockedBySearchBlacklist(
+      {
+        type: 'siteSearchPrompt',
+        provider: { template: 'https://example.com/search?q={query}' }
+      },
+      ['https://example.com/search?q=lumno%20docs'],
+      'lumno docs',
+      {
+        isBlockedUrl: (url, items) => items.includes(url)
+      }
+    ),
+    true,
+    'site-search prompts should be filtered through the shared blacklist helper'
+  );
+
+  assert.deepEqual(
+    searchSuggestions.filterBlacklistedSuggestions(
+      [
+        { type: 'history', url: 'https://allowed.example.com' },
+        { type: 'history', url: 'https://blocked.example.com' },
+        { type: 'newtab', url: 'chrome://newtab' }
+      ],
+      ['https://blocked.example.com'],
+      '',
+      {
+        isBlockedUrl: (url, items) => items.includes(url)
+      }
+    ).map((item) => item.url),
+    ['https://allowed.example.com', 'chrome://newtab'],
+    'shared blacklist filtering should keep allowed suggestions and preserve newtab entries'
+  );
+
+  const now = Date.UTC(2026, 3, 18, 12, 0, 0);
+  const bookmarkSuggestion = {
+    type: 'bookmark',
+    score: 20,
+    visitCount: 1,
+    typedCount: 0,
+    lastVisitTime: now - (1000 * 60 * 60)
+  };
+  const historySuggestion = {
+    type: 'history',
+    score: 20,
+    visitCount: 1,
+    typedCount: 0,
+    lastVisitTime: now - (1000 * 60 * 60 * 48)
+  };
+
+  assert.equal(
+    searchSuggestions.compareSearchSuggestions(bookmarkSuggestion, historySuggestion, { now }) < 0,
+    true,
+    'shared ranking should prefer fresher bookmark suggestions when base scores tie'
+  );
+
+  const createdSuggestion = searchSuggestions.createSearchSuggestion(
+    {
+      title: 'Lumno Docs',
+      url: 'https://example.com/docs',
+      lastVisitTime: now,
+      visitCount: '4',
+      typedCount: '2'
+    },
+    'history',
+    42,
+    { favicon: 'https://example.com/favicon.ico', reasons: ['来源：浏览历史'] }
+  );
+
+  assert.deepEqual(
+    createdSuggestion,
+    {
+      type: 'history',
+      title: 'Lumno Docs',
+      url: 'https://example.com/docs',
+      favicon: 'https://example.com/favicon.ico',
+      score: 42,
+      lastVisitTime: now,
+      visitCount: 4,
+      typedCount: 2,
+      reasons: ['来源：浏览历史']
+    },
+    'shared suggestion factory should normalize numeric fields and preserve extras'
+  );
+
+  assert.deepEqual(
+    searchSuggestions.buildSearchSuggestionReasons(
+      {
+        title: '知乎专栏',
+        lastVisitTime: now - (1000 * 60 * 60 * 2),
+        visitCount: 3
+      },
+      'history',
+      { normalizedPinyinQuery: 'zh' },
+      {
+        now,
+        getTitlePinyinMatchScore: () => ({ score: 10, reason: 'initials-prefix' })
+      }
+    ),
+    ['来源：浏览历史', '标题首字母匹配', '最近 24 小时访问'],
+    'shared suggestion reasons should stay deterministic with injected ranking helpers'
+  );
 }
 
 run();

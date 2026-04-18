@@ -4773,6 +4773,9 @@ function isUrlBlockedBySearchBlacklist(url, items) {
 }
 
 function buildBlacklistProbeUrlFromTemplate(template, query) {
+  if (SEARCH_SUGGESTION_UTILS.buildBlacklistProbeUrlFromTemplate) {
+    return SEARCH_SUGGESTION_UTILS.buildBlacklistProbeUrlFromTemplate(template, query);
+  }
   const rawTemplate = String(template || '');
   if (!rawTemplate) {
     return '';
@@ -4802,6 +4805,14 @@ function getSiteSearchProviderEntryUrl(provider) {
 }
 
 function isSuggestionBlockedBySearchBlacklist(suggestion, items, queryForProvider) {
+  if (SEARCH_SUGGESTION_UTILS.isSuggestionBlockedBySearchBlacklist) {
+    return SEARCH_SUGGESTION_UTILS.isSuggestionBlockedBySearchBlacklist(
+      suggestion,
+      items,
+      queryForProvider,
+      { isBlockedUrl: isUrlBlockedBySearchBlacklist }
+    );
+  }
   if (!suggestion) {
     return false;
   }
@@ -4820,6 +4831,14 @@ function isSuggestionBlockedBySearchBlacklist(suggestion, items, queryForProvide
 }
 
 function filterBlacklistedSuggestions(list, items, queryForProvider) {
+  if (SEARCH_SUGGESTION_UTILS.filterBlacklistedSuggestions) {
+    return SEARCH_SUGGESTION_UTILS.filterBlacklistedSuggestions(
+      list,
+      items,
+      queryForProvider,
+      { isBlockedUrl: isUrlBlockedBySearchBlacklist }
+    );
+  }
   if (!Array.isArray(list) || list.length === 0) {
     return [];
   }
@@ -6202,6 +6221,9 @@ function getOwnExtensionUtilityPenalty(item, hasSettingsIntent) {
 }
 
 function getRecentPopularityBoost(suggestion) {
+  if (SEARCH_SUGGESTION_UTILS.getRecentPopularityBoost) {
+    return SEARCH_SUGGESTION_UTILS.getRecentPopularityBoost(suggestion);
+  }
   if (!suggestion) {
     return 0;
   }
@@ -6225,6 +6247,9 @@ function getRecentPopularityBoost(suggestion) {
 }
 
 function getSearchSuggestionSourceRank(suggestion) {
+  if (SEARCH_SUGGESTION_UTILS.getSearchSuggestionSourceRank) {
+    return SEARCH_SUGGESTION_UTILS.getSearchSuggestionSourceRank(suggestion);
+  }
   if (!suggestion) {
     return 0;
   }
@@ -6241,6 +6266,9 @@ function getSearchSuggestionSourceRank(suggestion) {
 }
 
 function compareSearchSuggestions(a, b) {
+  if (SEARCH_SUGGESTION_UTILS.compareSearchSuggestions) {
+    return SEARCH_SUGGESTION_UTILS.compareSearchSuggestions(a, b);
+  }
   const scoreDiff = ((b.score || 0) + getRecentPopularityBoost(b)) -
     ((a.score || 0) + getRecentPopularityBoost(a));
   if (scoreDiff !== 0) {
@@ -6260,6 +6288,9 @@ function compareSearchSuggestions(a, b) {
 }
 
 function createSearchSuggestion(item, sourceType, score, extras) {
+  if (SEARCH_SUGGESTION_UTILS.createSearchSuggestion) {
+    return SEARCH_SUGGESTION_UTILS.createSearchSuggestion(item, sourceType, score, extras);
+  }
   return {
     type: sourceType,
     title: item.title || item.url,
@@ -6275,6 +6306,11 @@ function createSearchSuggestion(item, sourceType, score, extras) {
 }
 
 function buildSearchSuggestionReasons(item, sourceType, context) {
+  if (SEARCH_SUGGESTION_UTILS.buildSearchSuggestionReasons) {
+    return SEARCH_SUGGESTION_UTILS.buildSearchSuggestionReasons(item, sourceType, context, {
+      getTitlePinyinMatchScore
+    });
+  }
   const reasons = [];
   if (sourceType === 'bookmark') {
     reasons.push('来源：书签');
