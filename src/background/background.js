@@ -840,6 +840,12 @@ const REMOVED_AI_LOCAL_STORAGE_KEYS = STORAGE_KEYS.REMOVED_AI_LOCAL_STORAGE_KEYS
 const SHOW_SEARCH_COMMAND_NAME = 'show-search';
 const SHOW_SEARCH_PREFILL_COMMAND_NAME = 'show-search-prefill';
 const SHOW_SEARCH_PREFILL_V_COMMAND_NAME = 'show-search-prefill-v';
+const OVERLAY_SCRIPT_FILES = Object.freeze([
+  'src/shared/blacklist-utils.js',
+  'src/shared/search/favicons.js',
+  'src/shared/search/site-search-providers.js',
+  'src/overlay/input-ui.js'
+]);
 const HOTKEY_DUP_GUARD_MS = 180;
 const PAGE_HOTKEY_NEWTAB_RECOVER_MS = 1200;
 const TAB_SWITCH_WINDOW_SHORT_MS = 30 * 60 * 1000;
@@ -1707,14 +1713,14 @@ function openOverlayOnTab(activeTab, tabs, source) {
     openNewtabFallbackForUrl(activeUrl);
     return;
   }
-  logHotkeyDebug('inject-start', { tabId: activeTab.id, file: 'src/overlay/input-ui.js', source: source || '' });
+  logHotkeyDebug('inject-start', { tabId: activeTab.id, files: OVERLAY_SCRIPT_FILES, source: source || '' });
   chrome.scripting.executeScript({
     target: {tabId: activeTab.id},
-    files: ['src/overlay/input-ui.js']
+    files: OVERLAY_SCRIPT_FILES
   }, function() {
     if (chrome.runtime.lastError) {
       logHotkeyDebug('inject-failed', {
-        step: 'src/overlay/input-ui.js',
+        step: OVERLAY_SCRIPT_FILES.join(','),
         tabId: activeTab.id,
         error: chrome.runtime.lastError.message || 'unknown',
         source: source || ''
@@ -7001,15 +7007,33 @@ async function getSearchSuggestions(query, options) {
   const requestedTabZoomFactor = Number.isFinite(requestedTabZoomFactorRaw) && requestedTabZoomFactorRaw > 0
     ? requestedTabZoomFactorRaw
     : 1;
-  const THEME_STORAGE_KEY = STORAGE_KEYS.THEME_STORAGE_KEY || '_x_extension_theme_mode_2024_unique_';
-  const LANGUAGE_STORAGE_KEY = STORAGE_KEYS.LANGUAGE_STORAGE_KEY || '_x_extension_language_2024_unique_';
-  const LANGUAGE_MESSAGES_STORAGE_KEY = STORAGE_KEYS.LANGUAGE_MESSAGES_STORAGE_KEY || '_x_extension_language_messages_2024_unique_';
-  const DEFAULT_SEARCH_ENGINE_STORAGE_KEY = STORAGE_KEYS.DEFAULT_SEARCH_ENGINE_STORAGE_KEY || '_x_extension_default_search_engine_2024_unique_';
-  const SEARCH_RESULT_PRIORITY_STORAGE_KEY = STORAGE_KEYS.SEARCH_RESULT_PRIORITY_STORAGE_KEY || '_x_extension_search_result_priority_2026_unique_';
-  const SEARCH_BLACKLIST_STORAGE_KEY = STORAGE_KEYS.SEARCH_BLACKLIST_STORAGE_KEY || '_x_extension_search_blacklist_2026_unique_';
-  const OVERLAY_SIZE_MODE_STORAGE_KEY = STORAGE_KEYS.OVERLAY_SIZE_MODE_STORAGE_KEY || '_x_extension_overlay_size_mode_2026_unique_';
-  const OVERLAY_TAB_PRIORITY_STORAGE_KEY = STORAGE_KEYS.OVERLAY_TAB_PRIORITY_STORAGE_KEY || '_x_extension_overlay_tab_priority_2024_unique_';
-  const TAB_RANK_SCORE_DEBUG_STORAGE_KEY = STORAGE_KEYS.TAB_RANK_SCORE_DEBUG_STORAGE_KEY || '_x_extension_tab_rank_score_debug_2026_unique_';
+  // This function executes in the page world, so it must read injected globals locally.
+  const SEARCH_FAVICON_UTILS = globalThis.LumnoSearchFavicons || {};
+  const SITE_SEARCH_PROVIDER_UTILS = globalThis.LumnoSiteSearchProviders || {};
+  const OVERLAY_SEARCH_PROTOCOL = Object.freeze({
+    action: 'getSearchSuggestions',
+    mode: 'classic'
+  });
+  const OVERLAY_STORAGE_KEYS = Object.freeze({
+    theme: '_x_extension_theme_mode_2024_unique_',
+    language: '_x_extension_language_2024_unique_',
+    languageMessages: '_x_extension_language_messages_2024_unique_',
+    defaultSearchEngine: '_x_extension_default_search_engine_2024_unique_',
+    searchResultPriority: '_x_extension_search_result_priority_2026_unique_',
+    searchBlacklist: '_x_extension_search_blacklist_2026_unique_',
+    overlaySizeMode: '_x_extension_overlay_size_mode_2026_unique_',
+    overlayTabPriority: '_x_extension_overlay_tab_priority_2024_unique_',
+    tabRankScoreDebug: '_x_extension_tab_rank_score_debug_2026_unique_'
+  });
+  const THEME_STORAGE_KEY = OVERLAY_STORAGE_KEYS.theme;
+  const LANGUAGE_STORAGE_KEY = OVERLAY_STORAGE_KEYS.language;
+  const LANGUAGE_MESSAGES_STORAGE_KEY = OVERLAY_STORAGE_KEYS.languageMessages;
+  const DEFAULT_SEARCH_ENGINE_STORAGE_KEY = OVERLAY_STORAGE_KEYS.defaultSearchEngine;
+  const SEARCH_RESULT_PRIORITY_STORAGE_KEY = OVERLAY_STORAGE_KEYS.searchResultPriority;
+  const SEARCH_BLACKLIST_STORAGE_KEY = OVERLAY_STORAGE_KEYS.searchBlacklist;
+  const OVERLAY_SIZE_MODE_STORAGE_KEY = OVERLAY_STORAGE_KEYS.overlaySizeMode;
+  const OVERLAY_TAB_PRIORITY_STORAGE_KEY = OVERLAY_STORAGE_KEYS.overlayTabPriority;
+  const TAB_RANK_SCORE_DEBUG_STORAGE_KEY = OVERLAY_STORAGE_KEYS.tabRankScoreDebug;
   const storageArea = (chrome && chrome.storage && chrome.storage.sync)
     ? chrome.storage.sync
     : (chrome && chrome.storage ? chrome.storage.local : null);
@@ -11694,10 +11718,10 @@ async function getSearchSuggestions(query, options) {
         siteSearchProvidersCache = mergeCustomProvidersLocal(baseItems, customItems);
         if (latestOverlayQuery) {
           chrome.runtime.sendMessage({
-            action: SEARCH_PROTOCOL.SEARCH_ACTION_GET_SUGGESTIONS || 'getSearchSuggestions',
+            action: OVERLAY_SEARCH_PROTOCOL.action,
             query: latestOverlayQuery,
             context: 'overlay',
-            mode: SEARCH_PROTOCOL.SEARCH_SUGGESTIONS_MODE_CLASSIC || 'classic'
+            mode: OVERLAY_SEARCH_PROTOCOL.mode
           }, function(response) {
             if (response && response.suggestions) {
               updateSearchSuggestions(response.suggestions, latestOverlayQuery);
@@ -12183,10 +12207,10 @@ async function getSearchSuggestions(query, options) {
         return;
       }
       chrome.runtime.sendMessage({
-        action: SEARCH_PROTOCOL.SEARCH_ACTION_GET_SUGGESTIONS || 'getSearchSuggestions',
+        action: OVERLAY_SEARCH_PROTOCOL.action,
         query: query,
         context: 'overlay',
-        mode: SEARCH_PROTOCOL.SEARCH_SUGGESTIONS_MODE_CLASSIC || 'classic'
+        mode: OVERLAY_SEARCH_PROTOCOL.mode
       }, function(response) {
         if (response && response.suggestions) {
           updateSearchSuggestions(response.suggestions, query);
@@ -12222,10 +12246,10 @@ async function getSearchSuggestions(query, options) {
           return;
         }
         chrome.runtime.sendMessage({
-          action: SEARCH_PROTOCOL.SEARCH_ACTION_GET_SUGGESTIONS || 'getSearchSuggestions',
+          action: OVERLAY_SEARCH_PROTOCOL.action,
           query: query,
           context: 'overlay',
-          mode: SEARCH_PROTOCOL.SEARCH_SUGGESTIONS_MODE_CLASSIC || 'classic'
+          mode: OVERLAY_SEARCH_PROTOCOL.mode
         }, function(response) {
           if (response && response.suggestions) {
             updateSearchSuggestions(response.suggestions, query);
@@ -12291,10 +12315,10 @@ async function getSearchSuggestions(query, options) {
         }
         // Get search suggestions
         chrome.runtime.sendMessage({
-          action: SEARCH_PROTOCOL.SEARCH_ACTION_GET_SUGGESTIONS || 'getSearchSuggestions',
+          action: OVERLAY_SEARCH_PROTOCOL.action,
           query: query,
           context: 'overlay',
-          mode: SEARCH_PROTOCOL.SEARCH_SUGGESTIONS_MODE_CLASSIC || 'classic'
+          mode: OVERLAY_SEARCH_PROTOCOL.mode
         }, function(response) {
           if (overlay && overlay.dataset) {
             overlay.dataset.debugCallbackQuery = query;
@@ -15007,10 +15031,10 @@ async function getSearchSuggestions(query, options) {
                   return;
                 }
                 chrome.runtime.sendMessage({
-                  action: SEARCH_PROTOCOL.SEARCH_ACTION_GET_SUGGESTIONS || 'getSearchSuggestions',
+                  action: OVERLAY_SEARCH_PROTOCOL.action,
                   query: queryToRefresh,
                   context: 'overlay',
-                  mode: SEARCH_PROTOCOL.SEARCH_SUGGESTIONS_MODE_CLASSIC || 'classic'
+                  mode: OVERLAY_SEARCH_PROTOCOL.mode
                 }, function(nextResponse) {
                   if (chrome.runtime && chrome.runtime.lastError) {
                     return;
