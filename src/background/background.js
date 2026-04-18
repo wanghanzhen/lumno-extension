@@ -5553,6 +5553,11 @@ const SEARCH_SITE_CONFIG = {
 };
 
 function shouldIgnoreSearchDedupQueryParam(paramName) {
+  if (SEARCH_SUGGESTION_UTILS.shouldIgnoreSearchDedupQueryParam) {
+    return SEARCH_SUGGESTION_UTILS.shouldIgnoreSearchDedupQueryParam(paramName, {
+      ignoredParamNames: SEARCH_DEDUP_IGNORED_QUERY_PARAM_NAMES
+    });
+  }
   const normalized = String(paramName || '').trim().toLowerCase();
   if (!normalized) {
     return false;
@@ -5561,6 +5566,13 @@ function shouldIgnoreSearchDedupQueryParam(paramName) {
 }
 
 function buildSearchDedupUrlKey(url) {
+  if (SEARCH_SUGGESTION_UTILS.buildSearchDedupUrlKey) {
+    return SEARCH_SUGGESTION_UTILS.buildSearchDedupUrlKey(url, {
+      normalizeHost,
+      siteConfig: SEARCH_SITE_CONFIG,
+      shouldIgnoreQueryParam: shouldIgnoreSearchDedupQueryParam
+    });
+  }
   if (!url || typeof url !== 'string') {
     return '';
   }
@@ -5606,6 +5618,9 @@ function buildSearchDedupUrlKey(url) {
 }
 
 function shouldReplaceDedupedSearchItem(candidate, existing) {
+  if (SEARCH_SUGGESTION_UTILS.shouldReplaceDedupedSearchItem) {
+    return SEARCH_SUGGESTION_UTILS.shouldReplaceDedupedSearchItem(candidate, existing);
+  }
   if (!existing) {
     return true;
   }
@@ -5630,6 +5645,9 @@ function shouldReplaceDedupedSearchItem(candidate, existing) {
 }
 
 function normalizeSearchDedupTitle(title) {
+  if (SEARCH_SUGGESTION_UTILS.normalizeSearchDedupTitle) {
+    return SEARCH_SUGGESTION_UTILS.normalizeSearchDedupTitle(title);
+  }
   return String(title || '')
     .toLowerCase()
     .replace(/\s+/g, ' ')
@@ -5637,6 +5655,12 @@ function normalizeSearchDedupTitle(title) {
 }
 
 function buildSearchDedupEntryKey(item) {
+  if (SEARCH_SUGGESTION_UTILS.buildSearchDedupEntryKey) {
+    return SEARCH_SUGGESTION_UTILS.buildSearchDedupEntryKey(item, {
+      buildDedupUrlKey: buildSearchDedupUrlKey,
+      normalizeTitle: normalizeSearchDedupTitle
+    });
+  }
   if (!item) {
     return '';
   }
@@ -6698,6 +6722,13 @@ function collectSearchMatches(items, context, searchBlacklistItems) {
 }
 
 function applySearchSuggestionHostDiversity(list) {
+  if (SEARCH_SUGGESTION_UTILS.applySearchSuggestionHostDiversity) {
+    return SEARCH_SUGGESTION_UTILS.applySearchSuggestionHostDiversity(list, {
+      buildDedupEntryKey: buildSearchDedupEntryKey,
+      getClusterInfo: getSearchSuggestionClusterInfo,
+      policy: SEARCH_POLICY
+    });
+  }
   const candidates = Array.isArray(list) ? list : [];
   const selected = [];
   const selectedKeys = new Set();
@@ -7011,31 +7042,20 @@ async function getSearchSuggestions(query, options) {
 
     suggestions.sort(compareSearchSuggestions);
 
-    const uniqueSuggestions = [];
-    const seenSuggestionKeys = new Set();
-    for (let i = 0; i < suggestions.length && uniqueSuggestions.length < SEARCH_POLICY.candidatePoolLimit; i += 1) {
-      const suggestion = suggestions[i];
-      const suggestionKey = buildSearchDedupEntryKey(suggestion);
-      if (!suggestionKey || seenSuggestionKeys.has(suggestionKey)) {
-        continue;
-      }
-      seenSuggestionKeys.add(suggestionKey);
-      uniqueSuggestions.push(suggestion);
-    }
-
-    let finalSuggestions = applySearchSuggestionHostDiversity(
-      filterBlacklistedSuggestions(uniqueSuggestions, searchBlacklistItems, context.lookupQuery)
-    );
-
-    if (finalSuggestions.length === 0 && fallbackTopSites.length > 0) {
-      const fallbackResults = fallbackTopSites
-        .slice(0, SEARCH_POLICY.fallbackTopSiteLimit)
-        .map((site, index) => createSearchSuggestion(site, 'topSite', 1 - index, {
-          favicon: buildSearchSuggestionFavicon(site.url),
-          reasons: ['来源：常用站点']
-        }));
-      finalSuggestions = filterBlacklistedSuggestions(fallbackResults, searchBlacklistItems, context.lookupQuery);
-    }
+    let finalSuggestions = SEARCH_SUGGESTION_UTILS.finalizeSearchSuggestions
+      ? SEARCH_SUGGESTION_UTILS.finalizeSearchSuggestions(suggestions, fallbackTopSites, context, {
+        searchBlacklistItems,
+        queryForProvider: context.lookupQuery,
+        policy: SEARCH_POLICY,
+        buildDedupEntryKey: buildSearchDedupEntryKey,
+        filterBlacklistedSuggestions: filterBlacklistedSuggestions,
+        applyHostDiversity: applySearchSuggestionHostDiversity,
+        createSuggestion: createSearchSuggestion,
+        buildSuggestionFavicon: buildSearchSuggestionFavicon
+      })
+      : applySearchSuggestionHostDiversity(
+        filterBlacklistedSuggestions(suggestions, searchBlacklistItems, context.lookupQuery)
+      );
     
     return finalSuggestions;
     

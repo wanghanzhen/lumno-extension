@@ -65,6 +65,132 @@
     return rawTemplate.replace(/\{query\}/g, encodeURIComponent(String(query || '')));
   }
 
+  function shouldIgnoreSearchDedupQueryParam(paramName, options) {
+    const settings = options && typeof options === 'object' ? options : {};
+    const ignoredParamNames = settings.ignoredParamNames instanceof Set
+      ? settings.ignoredParamNames
+      : new Set(Array.isArray(settings.ignoredParamNames) ? settings.ignoredParamNames : []);
+    const normalized = String(paramName || '').trim().toLowerCase();
+    if (!normalized) {
+      return false;
+    }
+    return normalized.startsWith('utm_') || ignoredParamNames.has(normalized);
+  }
+
+  function buildSearchDedupUrlKey(url, options) {
+    const settings = options && typeof options === 'object' ? options : {};
+    const normalizeHost = typeof settings.normalizeHost === 'function'
+      ? settings.normalizeHost
+      : ((value) => String(value || '').trim().toLowerCase());
+    const siteConfig = settings.siteConfig && typeof settings.siteConfig === 'object'
+      ? settings.siteConfig
+      : {};
+    const shouldIgnoreQueryParam = typeof settings.shouldIgnoreQueryParam === 'function'
+      ? settings.shouldIgnoreQueryParam
+      : ((paramName) => shouldIgnoreSearchDedupQueryParam(paramName, settings));
+    if (!url || typeof url !== 'string') {
+      return '';
+    }
+    try {
+      const parsed = new URL(url);
+      parsed.protocol = String(parsed.protocol || '').toLowerCase();
+      parsed.hostname = normalizeHost(parsed.hostname);
+      if ((parsed.protocol === 'http:' && parsed.port === '80') || (parsed.protocol === 'https:' && parsed.port === '443')) {
+        parsed.port = '';
+      }
+      parsed.hash = '';
+      const normalizedPathname = parsed.pathname !== '/'
+        ? (parsed.pathname.replace(/\/+$/, '') || '/')
+        : '/';
+      parsed.pathname = normalizedPathname;
+      const normalizedHost = normalizeHost(parsed.hostname);
+      const hostConfig = siteConfig[normalizedHost] || null;
+      const ignoreAllSearchParamsPaths = hostConfig && hostConfig.ignoreAllSearchParamsPaths
+        ? hostConfig.ignoreAllSearchParamsPaths
+        : null;
+      const shouldIgnoreAllSearchParams = Boolean(
+        ignoreAllSearchParamsPaths && ignoreAllSearchParamsPaths.has(normalizedPathname)
+      );
+      const nextParams = new URLSearchParams();
+      if (!shouldIgnoreAllSearchParams) {
+        Array.from(parsed.searchParams.entries())
+          .filter(([key]) => !shouldIgnoreQueryParam(key))
+          .sort(([keyA, valueA], [keyB, valueB]) => {
+            if (keyA === keyB) {
+              return String(valueA).localeCompare(String(valueB));
+            }
+            return String(keyA).localeCompare(String(keyB));
+          })
+          .forEach(([key, value]) => {
+            nextParams.append(key, value);
+          });
+      }
+      parsed.search = nextParams.toString() ? `?${nextParams.toString()}` : '';
+      return parsed.toString();
+    } catch (error) {
+      return String(url).trim().toLowerCase();
+    }
+  }
+
+  function shouldReplaceDedupedSearchItem(candidate, existing) {
+    if (!existing) {
+      return true;
+    }
+    const candidateVisit = Number(candidate && candidate.lastVisitTime) || 0;
+    const existingVisit = Number(existing && existing.lastVisitTime) || 0;
+    if (candidateVisit !== existingVisit) {
+      return candidateVisit > existingVisit;
+    }
+    const candidateTyped = Number(candidate && candidate.typedCount) || 0;
+    const existingTyped = Number(existing && existing.typedCount) || 0;
+    if (candidateTyped !== existingTyped) {
+      return candidateTyped > existingTyped;
+    }
+    const candidateVisitCount = Number(candidate && candidate.visitCount) || 0;
+    const existingVisitCount = Number(existing && existing.visitCount) || 0;
+    if (candidateVisitCount !== existingVisitCount) {
+      return candidateVisitCount > existingVisitCount;
+    }
+    const candidateTitleLength = String(candidate && candidate.title || '').trim().length;
+    const existingTitleLength = String(existing && existing.title || '').trim().length;
+    return candidateTitleLength > existingTitleLength;
+  }
+
+  function normalizeSearchDedupTitle(title) {
+    return String(title || '')
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function buildSearchDedupEntryKey(item, options) {
+    const entry = item && typeof item === 'object' ? item : null;
+    if (!entry) {
+      return '';
+    }
+    const settings = options && typeof options === 'object' ? options : {};
+    const buildDedupUrlKey = typeof settings.buildDedupUrlKey === 'function'
+      ? settings.buildDedupUrlKey
+      : ((url) => buildSearchDedupUrlKey(url, settings));
+    const normalizeTitle = typeof settings.normalizeTitle === 'function'
+      ? settings.normalizeTitle
+      : normalizeSearchDedupTitle;
+    const urlKey = typeof entry.url === 'string' && entry.url
+      ? buildDedupUrlKey(entry.url)
+      : '';
+    const titleKey = normalizeTitle(entry.title);
+    if (urlKey && titleKey) {
+      return `url:${urlKey}::title:${titleKey}`;
+    }
+    if (urlKey) {
+      return `url:${urlKey}`;
+    }
+    if (titleKey) {
+      return `title:${titleKey}`;
+    }
+    return `id:${entry.id || ''}:${String(entry.title || '').trim()}`;
+  }
+
   function isSuggestionBlockedBySearchBlacklist(suggestion, items, queryForProvider, options) {
     if (!suggestion) {
       return false;
@@ -163,6 +289,26 @@
     return bVisit - aVisit;
   }
 
+  function takeTopUniqueSuggestions(list, options) {
+    const settings = options && typeof options === 'object' ? options : {};
+    const buildDedupEntryKey = typeof settings.buildDedupEntryKey === 'function'
+      ? settings.buildDedupEntryKey
+      : ((item) => buildSearchDedupEntryKey(item, settings));
+    const limit = Number.isInteger(settings.limit) && settings.limit > 0 ? settings.limit : 20;
+    const uniqueSuggestions = [];
+    const seenSuggestionKeys = new Set();
+    for (let i = 0; i < (Array.isArray(list) ? list.length : 0) && uniqueSuggestions.length < limit; i += 1) {
+      const suggestion = list[i];
+      const suggestionKey = buildDedupEntryKey(suggestion);
+      if (!suggestionKey || seenSuggestionKeys.has(suggestionKey)) {
+        continue;
+      }
+      seenSuggestionKeys.add(suggestionKey);
+      uniqueSuggestions.push(suggestion);
+    }
+    return uniqueSuggestions;
+  }
+
   function createSearchSuggestion(item, sourceType, score, extras) {
     const entry = item && typeof item === 'object' ? item : {};
     const extraValues = extras && typeof extras === 'object' ? extras : {};
@@ -178,6 +324,23 @@
       reasons: Array.isArray(extraValues.reasons) ? extraValues.reasons : [],
       ...extraValues
     };
+  }
+
+  function buildFallbackTopSiteSuggestions(topSites, options) {
+    const settings = options && typeof options === 'object' ? options : {};
+    const limit = Number.isInteger(settings.limit) && settings.limit > 0 ? settings.limit : 5;
+    const createSuggestion = typeof settings.createSuggestion === 'function'
+      ? settings.createSuggestion
+      : ((item, sourceType, score, extras) => createSearchSuggestion(item, sourceType, score, extras));
+    const buildSuggestionFavicon = typeof settings.buildSuggestionFavicon === 'function'
+      ? settings.buildSuggestionFavicon
+      : (() => '');
+    return (Array.isArray(topSites) ? topSites : [])
+      .slice(0, limit)
+      .map((site, index) => createSuggestion(site, 'topSite', 1 - index, {
+        favicon: buildSuggestionFavicon(site && site.url),
+        reasons: ['来源：常用站点']
+      }));
   }
 
   function buildSearchSuggestionReasons(item, sourceType, context, options) {
@@ -625,6 +788,138 @@
     return 160;
   }
 
+  function applySearchSuggestionHostDiversity(list, options) {
+    const settings = options && typeof options === 'object' ? options : {};
+    const buildDedupEntryKey = typeof settings.buildDedupEntryKey === 'function'
+      ? settings.buildDedupEntryKey
+      : ((item) => buildSearchDedupEntryKey(item, settings));
+    const getClusterInfo = typeof settings.getClusterInfo === 'function'
+      ? settings.getClusterInfo
+      : ((url) => getSearchSuggestionClusterInfo(url, settings));
+    const policy = settings.policy && typeof settings.policy === 'object'
+      ? settings.policy
+      : {};
+    const finalSuggestionLimit = Number.isInteger(policy.finalSuggestionLimit) ? policy.finalSuggestionLimit : 12;
+    const topSiteRepresentativeHostLimit = Number.isInteger(policy.topSiteRepresentativeHostLimit) ? policy.topSiteRepresentativeHostLimit : 1;
+    const topSiteRepresentativeClusterLimit = Number.isInteger(policy.topSiteRepresentativeClusterLimit) ? policy.topSiteRepresentativeClusterLimit : 1;
+    const primaryHostLimit = Number.isInteger(policy.primaryHostLimit) ? policy.primaryHostLimit : 3;
+    const primaryClusterLimit = Number.isInteger(policy.primaryClusterLimit) ? policy.primaryClusterLimit : 1;
+    const secondaryHostLimit = Number.isInteger(policy.secondaryHostLimit) ? policy.secondaryHostLimit : 5;
+    const secondaryClusterLimit = Number.isInteger(policy.secondaryClusterLimit) ? policy.secondaryClusterLimit : 2;
+
+    const candidates = Array.isArray(list) ? list : [];
+    const selected = [];
+    const selectedKeys = new Set();
+    const hostCounts = new Map();
+    const clusterCounts = new Map();
+    const hostHasTopSiteRepresentative = new Set();
+
+    const tryTake = (suggestion, hostLimit, clusterLimit) => {
+      if (!suggestion) {
+        return false;
+      }
+      const dedupKey = buildDedupEntryKey(suggestion);
+      if (!dedupKey || selectedKeys.has(dedupKey)) {
+        return false;
+      }
+      const info = getClusterInfo(suggestion.url);
+      const hostKey = info.host || '__nohost__';
+      const clusterKey = info.clusterKey || dedupKey;
+      const currentHostCount = hostCounts.get(hostKey) || 0;
+      const currentClusterCount = clusterCounts.get(clusterKey) || 0;
+      if (currentHostCount >= hostLimit || currentClusterCount >= clusterLimit) {
+        return false;
+      }
+      selected.push(suggestion);
+      selectedKeys.add(dedupKey);
+      hostCounts.set(hostKey, currentHostCount + 1);
+      clusterCounts.set(clusterKey, currentClusterCount + 1);
+      return true;
+    };
+
+    candidates.forEach((suggestion) => {
+      if (!suggestion || !(suggestion.type === 'topSite' || suggestion.isTopSite)) {
+        return;
+      }
+      const info = getClusterInfo(suggestion.url);
+      const hostKey = info.host || '__nohost__';
+      if (hostHasTopSiteRepresentative.has(hostKey)) {
+        return;
+      }
+      const isRepresentativeCategory =
+        info.category === 'site-root' ||
+        info.category === 'repo-root' ||
+        info.category === 'section' ||
+        info.category === 'landing';
+      if (!isRepresentativeCategory) {
+        return;
+      }
+      if (tryTake(suggestion, topSiteRepresentativeHostLimit, topSiteRepresentativeClusterLimit)) {
+        hostHasTopSiteRepresentative.add(hostKey);
+      }
+    });
+
+    candidates.forEach((suggestion) => {
+      tryTake(suggestion, primaryHostLimit, primaryClusterLimit);
+    });
+
+    if (selected.length < finalSuggestionLimit) {
+      candidates.forEach((suggestion) => {
+        tryTake(suggestion, secondaryHostLimit, secondaryClusterLimit);
+      });
+    }
+
+    return selected.slice(0, finalSuggestionLimit);
+  }
+
+  function finalizeSearchSuggestions(suggestions, fallbackTopSites, context, options) {
+    const settings = options && typeof options === 'object' ? options : {};
+    const searchBlacklistItems = Array.isArray(settings.searchBlacklistItems) ? settings.searchBlacklistItems : [];
+    const queryForProvider = settings.queryForProvider || (context && context.lookupQuery) || '';
+    const policy = settings.policy && typeof settings.policy === 'object' ? settings.policy : {};
+    const takeUnique = typeof settings.takeUniqueSuggestions === 'function'
+      ? settings.takeUniqueSuggestions
+      : ((list) => takeTopUniqueSuggestions(list, {
+        buildDedupEntryKey: settings.buildDedupEntryKey,
+        limit: policy.candidatePoolLimit
+      }));
+    const filterSuggestions = typeof settings.filterBlacklistedSuggestions === 'function'
+      ? settings.filterBlacklistedSuggestions
+      : ((list, items, candidateQuery) => filterBlacklistedSuggestions(list, items, candidateQuery, settings));
+    const applyHostDiversity = typeof settings.applyHostDiversity === 'function'
+      ? settings.applyHostDiversity
+      : ((list) => applySearchSuggestionHostDiversity(list, {
+        buildDedupEntryKey: settings.buildDedupEntryKey,
+        getClusterInfo: settings.getClusterInfo,
+        policy
+      }));
+    const buildFallbackSuggestions = typeof settings.buildFallbackSuggestions === 'function'
+      ? settings.buildFallbackSuggestions
+      : ((items) => buildFallbackTopSiteSuggestions(items, {
+        limit: policy.fallbackTopSiteLimit,
+        createSuggestion: settings.createSuggestion,
+        buildSuggestionFavicon: settings.buildSuggestionFavicon
+      }));
+
+    let finalSuggestions = applyHostDiversity(
+      filterSuggestions(
+        takeUnique(Array.isArray(suggestions) ? suggestions : []),
+        searchBlacklistItems,
+        queryForProvider
+      )
+    );
+
+    if (finalSuggestions.length === 0 && Array.isArray(fallbackTopSites) && fallbackTopSites.length > 0) {
+      finalSuggestions = filterSuggestions(
+        buildFallbackSuggestions(fallbackTopSites),
+        searchBlacklistItems,
+        queryForProvider
+      );
+    }
+
+    return finalSuggestions;
+  }
+
   function buildSearchBrandDirectSuggestion(candidates, context, options) {
     const queryContext = context && typeof context === 'object' ? context : {};
     if (queryContext.intentType !== 'brand' || queryContext.hasInformationalIntent) {
@@ -973,11 +1268,16 @@
     buildBlacklistProbeUrlFromTemplate,
     buildBookmarkSearchRequest,
     buildSearchBrandDirectSuggestion,
+    buildSearchDedupEntryKey,
+    buildSearchDedupUrlKey,
     buildSearchSuggestionReasons,
+    buildFallbackTopSiteSuggestions,
     calculateSearchRelevanceScore,
     compareSearchSuggestions,
     createSearchSuggestion,
+    finalizeSearchSuggestions,
     filterBlacklistedSuggestions,
+    applySearchSuggestionHostDiversity,
     getRecentPopularityBoost,
     getSearchBrandHostMatchScore,
     getSearchDirectNavigationAdjustment,
@@ -994,6 +1294,11 @@
     looksLikeOpaqueIdSegment,
     mergeSearchItems,
     normalizeClusterSegment,
+    normalizeSearchDedupTitle,
     normalizeSearchSuggestionsMode
+    ,
+    shouldIgnoreSearchDedupQueryParam,
+    shouldReplaceDedupedSearchItem,
+    takeTopUniqueSuggestions
   };
 });

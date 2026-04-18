@@ -68,6 +68,51 @@ function run() {
   );
 
   assert.equal(
+    searchSuggestions.shouldIgnoreSearchDedupQueryParam('utm_source', {
+      ignoredParamNames: new Set(['ref'])
+    }),
+    true,
+    'dedup query filtering should ignore utm_* params'
+  );
+
+  assert.equal(
+    searchSuggestions.buildSearchDedupUrlKey(
+      'https://Example.com/docs/?b=2&utm_source=x&a=1#hash',
+      {
+        normalizeHost: (host) => String(host || '').toLowerCase().replace(/^www\./, ''),
+        siteConfig: {},
+        shouldIgnoreQueryParam: (paramName) => ['utm_source'].includes(paramName)
+      }
+    ),
+    'https://example.com/docs?a=1&b=2',
+    'dedup URL keys should normalize host, sort params, and drop ignored tracking params'
+  );
+
+  assert.equal(
+    searchSuggestions.buildSearchDedupEntryKey(
+      {
+        title: '  Lumno   Docs ',
+        url: 'https://example.com/docs?utm_source=test'
+      },
+      {
+        buildDedupUrlKey: (url) => String(url || '').replace('?utm_source=test', ''),
+        normalizeTitle: searchSuggestions.normalizeSearchDedupTitle
+      }
+    ),
+    'url:https://example.com/docs::title:lumno docs',
+    'dedup entry keys should combine normalized URL and title'
+  );
+
+  assert.equal(
+    searchSuggestions.shouldReplaceDedupedSearchItem(
+      { lastVisitTime: 20, typedCount: 1, visitCount: 1, title: 'Short' },
+      { lastVisitTime: 10, typedCount: 5, visitCount: 5, title: 'Longer title' }
+    ),
+    true,
+    'dedup replacement should prefer fresher entries before other signals'
+  );
+
+  assert.equal(
     searchSuggestions.isSuggestionBlockedBySearchBlacklist(
       {
         type: 'siteSearchPrompt',
@@ -458,6 +503,132 @@ function run() {
     ),
     null,
     'shared brand-direct builder should skip synthesis when a representative root candidate already exists'
+  );
+
+  assert.deepEqual(
+    searchSuggestions.takeTopUniqueSuggestions(
+      [
+        { title: 'A', url: 'https://example.com/a', score: 10 },
+        { title: 'A', url: 'https://example.com/a', score: 9 },
+        { title: 'B', url: 'https://example.com/b', score: 8 }
+      ],
+      {
+        buildDedupEntryKey: (item) => item.url,
+        limit: 2
+      }
+    ).map((item) => item.url),
+    ['https://example.com/a', 'https://example.com/b'],
+    'candidate-pool dedup should keep the first unique suggestions in score order'
+  );
+
+  assert.deepEqual(
+    searchSuggestions.applySearchSuggestionHostDiversity(
+      [
+        { type: 'topSite', isTopSite: true, title: 'Root', url: 'https://example.com/' },
+        { type: 'history', title: 'Doc 1', url: 'https://example.com/docs/one' },
+        { type: 'history', title: 'Doc 2', url: 'https://example.com/docs/two' },
+        { type: 'history', title: 'Other', url: 'https://other.com/' }
+      ],
+      {
+        buildDedupEntryKey: (item) => item.url,
+        getClusterInfo: (url) => {
+          if (url === 'https://example.com/') return { host: 'example.com', clusterKey: 'example.com/', category: 'site-root' };
+          if (url.startsWith('https://example.com/docs')) return { host: 'example.com', clusterKey: 'example.com/docs', category: 'content' };
+          return { host: 'other.com', clusterKey: 'other.com/', category: 'site-root' };
+        },
+        policy: {
+          finalSuggestionLimit: 3,
+          topSiteRepresentativeHostLimit: 1,
+          topSiteRepresentativeClusterLimit: 1,
+          primaryHostLimit: 2,
+          primaryClusterLimit: 1,
+          secondaryHostLimit: 3,
+          secondaryClusterLimit: 2
+        }
+      }
+    ).map((item) => item.url),
+    ['https://example.com/', 'https://example.com/docs/one', 'https://other.com/'],
+    'host diversity should reserve representative top sites and then fill remaining slots with diverse hosts/clusters'
+  );
+
+  assert.deepEqual(
+    searchSuggestions.buildFallbackTopSiteSuggestions(
+      [
+        { title: 'Example', url: 'https://example.com/' },
+        { title: 'Other', url: 'https://other.com/' }
+      ],
+      {
+        limit: 1,
+        createSuggestion: (item, sourceType, score, extras) => ({ ...item, type: sourceType, score, ...extras }),
+        buildSuggestionFavicon: (url) => `${url}favicon.ico`
+      }
+    ),
+    [
+      {
+        title: 'Example',
+        url: 'https://example.com/',
+        type: 'topSite',
+        score: 1,
+        favicon: 'https://example.com/favicon.ico',
+        reasons: ['来源：常用站点']
+      }
+    ],
+    'fallback top sites should be converted into low-score topSite suggestions'
+  );
+
+  assert.deepEqual(
+    searchSuggestions.finalizeSearchSuggestions(
+      [
+        { type: 'history', title: 'Example', url: 'https://example.com/', score: 10 },
+        { type: 'history', title: 'Example', url: 'https://example.com/', score: 9 }
+      ],
+      [
+        { title: 'Fallback', url: 'https://fallback.com/' }
+      ],
+      { lookupQuery: 'example' },
+      {
+        searchBlacklistItems: [],
+        queryForProvider: 'example',
+        policy: {
+          candidatePoolLimit: 5,
+          finalSuggestionLimit: 3,
+          fallbackTopSiteLimit: 1
+        },
+        buildDedupEntryKey: (item) => item.url,
+        filterBlacklistedSuggestions: (list) => list,
+        applyHostDiversity: (list) => list,
+        createSuggestion: (item, sourceType, score, extras) => ({ ...item, type: sourceType, score, ...extras }),
+        buildSuggestionFavicon: (url) => `${url}favicon.ico`
+      }
+    ).map((item) => item.url),
+    ['https://example.com/'],
+    'final suggestion finalization should dedupe the candidate pool before returning results'
+  );
+
+  assert.deepEqual(
+    searchSuggestions.finalizeSearchSuggestions(
+      [],
+      [
+        { title: 'Fallback', url: 'https://fallback.com/' }
+      ],
+      { lookupQuery: 'fallback' },
+      {
+        searchBlacklistItems: [],
+        queryForProvider: 'fallback',
+        policy: {
+          candidatePoolLimit: 5,
+          finalSuggestionLimit: 3,
+          fallbackTopSiteLimit: 1
+        },
+        buildDedupEntryKey: (item) => item.url,
+        filterBlacklistedSuggestions: (list) => list,
+        applyHostDiversity: (list) => list,
+        createSuggestion: (item, sourceType, score, extras) => ({ ...item, type: sourceType, score, ...extras }),
+        buildSuggestionFavicon: (url) => `${url}favicon.ico`
+      }
+    ).map((item) => item.url),
+    ['https://fallback.com/'],
+    'final suggestion finalization should fall back to top sites when no ranked results survive'
   );
 }
 
