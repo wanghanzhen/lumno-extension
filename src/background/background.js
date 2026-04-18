@@ -3576,8 +3576,6 @@ function logBlockedLocalFavicon(url, source) {
   });
 }
 
-const SEARCH_ENGINE_DEFS = SEARCH_ENGINE_UTILS.SEARCH_ENGINE_DEFS || [];
-
 let defaultSearchEngineState = {
   id: '',
   name: '',
@@ -3600,63 +3598,28 @@ function arrayBufferToBase64(buffer) {
 }
 
 function getGoogleFaviconUrl(hostname) {
-  if (SEARCH_FAVICON_UTILS.getGoogleFaviconUrl) {
-    return SEARCH_FAVICON_UTILS.getGoogleFaviconUrl(hostname, {
-      runtimeGetUrl: chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function'
-        ? chrome.runtime.getURL.bind(chrome.runtime)
-        : null,
-      size: FAVICON_GOOGLE_SIZE
-    });
-  }
-  const normalized = normalizeFaviconHost(hostname);
-  if (!normalized) {
-    return '';
-  }
-  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(normalized)}&sz=${FAVICON_GOOGLE_SIZE}`;
+  return SEARCH_FAVICON_UTILS.getGoogleFaviconUrl(hostname, {
+    runtimeGetUrl: chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function'
+      ? chrome.runtime.getURL.bind(chrome.runtime)
+      : null,
+    size: FAVICON_GOOGLE_SIZE
+  });
 }
 
 function getFaviconIsUrl(hostname) {
-  if (SEARCH_FAVICON_UTILS.getFaviconIsUrl) {
-    return SEARCH_FAVICON_UTILS.getFaviconIsUrl(hostname);
-  }
-  const normalized = normalizeFaviconHost(hostname);
-  if (!normalized) {
-    return '';
-  }
-  return `https://favicon.is/${encodeURIComponent(normalized)}`;
+  return SEARCH_FAVICON_UTILS.getFaviconIsUrl(hostname);
 }
 
 function normalizeHost(hostname) {
-  if (SEARCH_ENGINE_UTILS.normalizeSearchEngineHost) {
-    return SEARCH_ENGINE_UTILS.normalizeSearchEngineHost(hostname);
-  }
-  if (!hostname) {
-    return '';
-  }
-  return String(hostname).toLowerCase().replace(/^www\./i, '');
+  return SEARCH_ENGINE_UTILS.normalizeSearchEngineHost(hostname);
 }
 
 function getSearchEngineByHostname(hostname) {
-  if (SEARCH_ENGINE_UTILS.getSearchEngineByHostname) {
-    return SEARCH_ENGINE_UTILS.getSearchEngineByHostname(hostname);
-  }
-  const normalized = normalizeHost(hostname);
-  if (!normalized) {
-    return null;
-  }
-  return SEARCH_ENGINE_DEFS.find((engine) =>
-    engine.hostMatches.some((match) => normalized.includes(match))
-  ) || null;
+  return SEARCH_ENGINE_UTILS.getSearchEngineByHostname(hostname);
 }
 
 function getSearchEngineById(id) {
-  if (SEARCH_ENGINE_UTILS.getSearchEngineById) {
-    return SEARCH_ENGINE_UTILS.getSearchEngineById(id);
-  }
-  if (!id) {
-    return null;
-  }
-  return SEARCH_ENGINE_DEFS.find((engine) => engine.id === id) || null;
+  return SEARCH_ENGINE_UTILS.getSearchEngineById(id);
 }
 
 function setDefaultSearchEngineState(nextState, shouldPersist) {
@@ -3690,10 +3653,7 @@ function loadDefaultSearchEngineState() {
 }
 
 function isSearchEngineResultUrl(url) {
-  if (SEARCH_ENGINE_UTILS.isSearchEngineResultUrl) {
-    return SEARCH_ENGINE_UTILS.isSearchEngineResultUrl(url);
-  }
-  return false;
+  return SEARCH_ENGINE_UTILS.isSearchEngineResultUrl(url);
 }
 
 function updateDefaultSearchEngineFromUrl(url) {
@@ -3721,13 +3681,7 @@ function updateDefaultSearchEngineFromUrl(url) {
 
 function buildDefaultSearchUrl(query) {
   const engine = getSearchEngineById(defaultSearchEngineState.id);
-  if (SEARCH_ENGINE_UTILS.buildSearchEngineUrl) {
-    return SEARCH_ENGINE_UTILS.buildSearchEngineUrl(engine || defaultSearchEngineState.id, query);
-  }
-  if (engine && engine.searchTemplate) {
-    return engine.searchTemplate.replace(/\{query\}/g, encodeURIComponent(query));
-  }
-  return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+  return SEARCH_ENGINE_UTILS.buildSearchEngineUrl(engine || defaultSearchEngineState.id, query);
 }
 
 function isNumericHostLike(hostname) {
@@ -3820,13 +3774,7 @@ function getDirectNavigationUrl(input) {
 
 function getDefaultSearchEngineThemeUrl() {
   const engine = getSearchEngineById(defaultSearchEngineState.id);
-  if (SEARCH_ENGINE_UTILS.buildSearchEngineUrl) {
-    return SEARCH_ENGINE_UTILS.buildSearchEngineUrl(engine || defaultSearchEngineState.id, 'test');
-  }
-  if (engine && engine.searchTemplate) {
-    return engine.searchTemplate.replace(/\{query\}/g, encodeURIComponent('test'));
-  }
-  return 'https://www.google.com';
+  return SEARCH_ENGINE_UTILS.buildSearchEngineUrl(engine || defaultSearchEngineState.id, 'test');
 }
 
 function getDefaultSearchEngineFaviconUrl() {
@@ -4218,17 +4166,7 @@ function isBlockedLocalFaviconUrl(url) {
 }
 
 function normalizeFaviconHost(hostname) {
-  if (SEARCH_FAVICON_UTILS.normalizeFaviconHost) {
-    return SEARCH_FAVICON_UTILS.normalizeFaviconHost(hostname);
-  }
-  if (!hostname) {
-    return '';
-  }
-  const host = String(hostname).toLowerCase().replace(/^www\./i, '');
-  if (host === 'feishu.cn' || host.endsWith('.feishu.cn')) {
-    return 'feishu.cn';
-  }
-  return host;
+  return SEARCH_FAVICON_UTILS.normalizeFaviconHost(hostname);
 }
 
 function getChromeFaviconUrl(url) {
@@ -4657,47 +4595,11 @@ function fetchFaviconData(url) {
 }
 
 function normalizeSiteSearchTemplate(template) {
-  if (SITE_SEARCH_PROVIDER_UTILS.normalizeSiteSearchTemplate) {
-    return SITE_SEARCH_PROVIDER_UTILS.normalizeSiteSearchTemplate(template);
-  }
-  if (!template) {
-    return '';
-  }
-  return template
-    .replace(/\{\{\{s\}\}\}/g, '{query}')
-    .replace(/\{s\}/g, '{query}')
-    .replace(/\{searchTerms\}/g, '{query}');
+  return SITE_SEARCH_PROVIDER_UTILS.normalizeSiteSearchTemplate(template);
 }
 
 function sanitizeSiteSearchProviders(items) {
-  if (SITE_SEARCH_PROVIDER_UTILS.sanitizeSiteSearchProviders) {
-    return SITE_SEARCH_PROVIDER_UTILS.sanitizeSiteSearchProviders(items);
-  }
-  if (!Array.isArray(items)) {
-    return [];
-  }
-  return items
-    .filter((item) => item && item.key && item.template)
-    .map((item) => {
-      const template = normalizeSiteSearchTemplate(item.template);
-      return {
-        key: String(item.key).trim(),
-        aliases: Array.isArray(item.aliases) ? item.aliases.filter(Boolean) : [],
-        name: item.name || item.key,
-        template: template,
-        action: String(item.action || '').trim(),
-        submitStrategy: String(item.submitStrategy || '').trim()
-      };
-    })
-    .filter((item) => {
-      if (!item.key || !item.template) {
-        return false;
-      }
-      if (item.template.includes('{query}')) {
-        return true;
-      }
-      return item.action === 'openAndSubmit' && item.submitStrategy === 'geminiPrompt';
-    });
+  return SITE_SEARCH_PROVIDER_UTILS.sanitizeSiteSearchProviders(items);
 }
 
 function loadCustomSiteSearchProviders() {
@@ -4777,14 +4679,7 @@ function buildBlacklistProbeUrlFromTemplate(template, query) {
 }
 
 function isInteractiveSiteSearchProvider(provider) {
-  if (SITE_SEARCH_PROVIDER_UTILS.isInteractiveSiteSearchProvider) {
-    return SITE_SEARCH_PROVIDER_UTILS.isInteractiveSiteSearchProvider(provider);
-  }
-  return Boolean(
-    provider &&
-    provider.action === 'openAndSubmit' &&
-    provider.submitStrategy === 'geminiPrompt'
-  );
+  return SITE_SEARCH_PROVIDER_UTILS.isInteractiveSiteSearchProvider(provider);
 }
 
 function getSiteSearchProviderEntryUrl(provider) {
@@ -4835,64 +4730,6 @@ function mergeCustomProviders(baseItems, customItems) {
     merged.push(item);
   });
   return merged;
-}
-
-function getTemplateDomain(template) {
-  if (!template) {
-    return '';
-  }
-  try {
-    const url = template.replace(/\{query\}/g, 'test');
-    return normalizeHost(new URL(url).hostname);
-  } catch (e) {
-    return '';
-  }
-}
-
-function mergeSiteSearchProviders(localItems, bangList) {
-  if (!Array.isArray(localItems) || localItems.length === 0) {
-    return [];
-  }
-  if (!Array.isArray(bangList) || bangList.length === 0) {
-    return localItems;
-  }
-  return localItems.map((item) => {
-    const aliases = Array.isArray(item.aliases) ? item.aliases : [];
-    const keys = [item.key, ...aliases].filter(Boolean).map((key) => String(key).toLowerCase());
-    const domain = getTemplateDomain(item.template);
-    let match = bangList.find((bang) => bang && keys.includes(String(bang.t || '').toLowerCase()));
-    if (!match && domain) {
-      match = bangList.find((bang) => bang && String(bang.d || '').toLowerCase().includes(domain));
-    }
-    if (!match || !match.u) {
-      return item;
-    }
-    return {
-      key: item.key,
-      aliases: item.aliases || [],
-      name: item.name || match.s || item.key,
-      template: normalizeSiteSearchTemplate(match.u)
-    };
-  });
-}
-
-function parseBangList(text) {
-  if (!text) {
-    return [];
-  }
-  let jsonText = text.trim();
-  if (jsonText.startsWith('/*')) {
-    jsonText = jsonText.replace(/^\/\*.*?\*\/\s*/s, '');
-  }
-  if (!jsonText.startsWith('[')) {
-    return [];
-  }
-  try {
-    const parsed = JSON.parse(jsonText);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (e) {
-    return [];
-  }
 }
 
 function loadSiteSearchProviders() {
@@ -5583,50 +5420,20 @@ const SEARCH_ACTION_SEGMENTS = new Set([
 ]);
 
 function splitSearchTerms(value) {
-  if (SEARCH_QUERY_CONTEXT_UTILS.splitSearchTerms) {
-    return SEARCH_QUERY_CONTEXT_UTILS.splitSearchTerms(value);
-  }
-  return Array.from(new Set(
-    String(value || '')
-      .toLowerCase()
-      .split(/[^a-z0-9\u4e00-\u9fff]+/i)
-      .map((item) => item.trim())
-      .filter(Boolean)
-  ));
+  return SEARCH_QUERY_CONTEXT_UTILS.splitSearchTerms(value);
 }
 
 function buildSearchQueryContext(query) {
-  if (SEARCH_QUERY_CONTEXT_UTILS.buildSearchQueryContext) {
-    return SEARCH_QUERY_CONTEXT_UTILS.buildSearchQueryContext(query, {
-      normalizePinyinQuery: (lookupQuery) => (
-        shouldUseTitlePinyinMatch(lookupQuery)
-          ? normalizeAsciiQueryForPinyin(lookupQuery)
-          : ''
-      ),
-      pathIntentTerms: SEARCH_PATH_INTENT_TERMS,
-      settingsIntentTerms: SEARCH_SETTINGS_INTENT_TERMS,
-      informationalTerms: SEARCH_INFORMATIONAL_TERMS
-    });
-  }
-  const lookupQuery = String(query || '');
-  const queryLower = lookupQuery.trim().toLowerCase();
-  const normalizedPinyinQuery = shouldUseTitlePinyinMatch(lookupQuery)
-    ? normalizeAsciiQueryForPinyin(lookupQuery)
-    : '';
-  const queryTerms = splitSearchTerms(queryLower);
-  if (queryLower && !queryTerms.includes(queryLower)) {
-    queryTerms.unshift(queryLower);
-  }
-  return {
-    lookupQuery,
-    queryLower,
-    normalizedPinyinQuery,
-    useTitlePinyinMatch: Boolean(normalizedPinyinQuery),
-    queryTerms,
-    intentType: classifySearchIntent(lookupQuery, queryTerms),
-    hasSettingsIntent: queryTerms.some((term) => SEARCH_SETTINGS_INTENT_TERMS.has(term)),
-    hasInformationalIntent: queryTerms.some((term) => SEARCH_INFORMATIONAL_TERMS.has(term))
-  };
+  return SEARCH_QUERY_CONTEXT_UTILS.buildSearchQueryContext(query, {
+    normalizePinyinQuery: (lookupQuery) => (
+      shouldUseTitlePinyinMatch(lookupQuery)
+        ? normalizeAsciiQueryForPinyin(lookupQuery)
+        : ''
+    ),
+    pathIntentTerms: SEARCH_PATH_INTENT_TERMS,
+    settingsIntentTerms: SEARCH_SETTINGS_INTENT_TERMS,
+    informationalTerms: SEARCH_INFORMATIONAL_TERMS
+  });
 }
 
 function hasSearchHomeTitle(title) {
@@ -5673,14 +5480,7 @@ function getSearchEngineSuggestionScore(context, localSuggestions) {
 }
 
 function looksLikeVersionSegment(segment) {
-  if (SEARCH_QUERY_CONTEXT_UTILS.looksLikeVersionSegment) {
-    return SEARCH_QUERY_CONTEXT_UTILS.looksLikeVersionSegment(segment);
-  }
-  const value = String(segment || '').trim().toLowerCase();
-  if (!value) {
-    return false;
-  }
-  return /^v?\d+(\.\d+){1,3}([.-][a-z0-9]+)?$/i.test(value);
+  return SEARCH_QUERY_CONTEXT_UTILS.looksLikeVersionSegment(segment);
 }
 
 function looksLikeOpaqueIdSegment(segment) {
@@ -5704,54 +5504,13 @@ function getSearchSuggestionClusterInfo(url) {
 }
 
 function looksLikeNavigationQuery(query) {
-  if (SEARCH_QUERY_CONTEXT_UTILS.looksLikeNavigationQuery) {
-    return SEARCH_QUERY_CONTEXT_UTILS.looksLikeNavigationQuery(query);
-  }
-  const value = String(query || '').trim().toLowerCase();
-  if (!value) {
-    return false;
-  }
-  if (value.includes('://')) {
-    return true;
-  }
-  if (/^[a-z0-9-]+(\.[a-z0-9-]+)+([/#?].*)?$/i.test(value)) {
-    return true;
-  }
-  return false;
+  return SEARCH_QUERY_CONTEXT_UTILS.looksLikeNavigationQuery(query);
 }
 
 function classifySearchIntent(query, queryTerms) {
-  if (SEARCH_QUERY_CONTEXT_UTILS.classifySearchIntent) {
-    return SEARCH_QUERY_CONTEXT_UTILS.classifySearchIntent(query, queryTerms, {
-      pathIntentTerms: SEARCH_PATH_INTENT_TERMS
-    });
-  }
-  const raw = String(query || '').trim().toLowerCase();
-  const terms = Array.isArray(queryTerms) ? queryTerms.filter(Boolean) : [];
-  if (looksLikeNavigationQuery(raw)) {
-    return 'navigation';
-  }
-
-  if (terms.some((term) => SEARCH_PATH_INTENT_TERMS.has(term))) {
-    return 'path';
-  }
-
-  if (terms.some((term) => looksLikeVersionSegment(term)) || /v?\d+(\.\d+){1,3}/i.test(raw)) {
-    return 'revisit';
-  }
-
-  if (terms.length >= 2) {
-    if (terms.some((term) => /\d/.test(term))) {
-      return 'revisit';
-    }
-    return 'object';
-  }
-
-  if (terms.length === 1) {
-    return 'brand';
-  }
-
-  return 'object';
+  return SEARCH_QUERY_CONTEXT_UTILS.classifySearchIntent(query, queryTerms, {
+    pathIntentTerms: SEARCH_PATH_INTENT_TERMS
+  });
 }
 
 function getSearchSourceAdjustment(sourceType, intentType) {
@@ -5759,21 +5518,7 @@ function getSearchSourceAdjustment(sourceType, intentType) {
 }
 
 function matchesSearchQueryText(item, context) {
-  if (SEARCH_QUERY_CONTEXT_UTILS.matchesSearchQueryText) {
-    return SEARCH_QUERY_CONTEXT_UTILS.matchesSearchQueryText(item, context);
-  }
-  if (!item || !item.url) {
-    return false;
-  }
-  const titleLower = item.title ? item.title.toLowerCase() : '';
-  const urlLower = item.url.toLowerCase();
-  if (titleLower.includes(context.queryLower) || urlLower.includes(context.queryLower)) {
-    return true;
-  }
-  return context.queryTerms.some((term) => (
-    term &&
-    (titleLower.includes(term) || urlLower.includes(term))
-  ));
+  return SEARCH_QUERY_CONTEXT_UTILS.matchesSearchQueryText(item, context);
 }
 
 function matchesSearchTitlePinyin(item, context) {
@@ -5868,16 +5613,10 @@ function buildSearchSuggestionFavicon(url) {
 }
 
 function collectSearchMatches(items, context, searchBlacklistItems) {
-  if (SEARCH_QUERY_CONTEXT_UTILS.collectSearchMatches) {
-    return SEARCH_QUERY_CONTEXT_UTILS.collectSearchMatches(items, context, {
-      matchesTitlePinyin: matchesSearchTitlePinyin,
-      isBlocked: (item) => isUrlBlockedBySearchBlacklist(item && item.url, searchBlacklistItems)
-    });
-  }
-  return (Array.isArray(items) ? items : []).filter((item) => (
-    (matchesSearchQueryText(item, context) || matchesSearchTitlePinyin(item, context)) &&
-    !isUrlBlockedBySearchBlacklist(item && item.url, searchBlacklistItems)
-  ));
+  return SEARCH_QUERY_CONTEXT_UTILS.collectSearchMatches(items, context, {
+    matchesTitlePinyin: matchesSearchTitlePinyin,
+    isBlocked: (item) => isUrlBlockedBySearchBlacklist(item && item.url, searchBlacklistItems)
+  });
 }
 
 function applySearchSuggestionHostDiversity(list) {
@@ -5889,44 +5628,16 @@ function applySearchSuggestionHostDiversity(list) {
 }
 
 function mergeItemsByUrl(itemGroups, searchBlacklistItems) {
-  if (SEARCH_SUGGESTION_UTILS.mergeSearchItems) {
-    return SEARCH_SUGGESTION_UTILS.mergeSearchItems(itemGroups, {
-      buildKey: buildSearchDedupEntryKey,
-      shouldReplace: shouldReplaceDedupedSearchItem,
-      isBlocked: (item) => isUrlBlockedBySearchBlacklist(item && item.url, searchBlacklistItems)
-    });
-  }
-  const merged = [];
-  const mergedIndexByKey = new Map();
-  (Array.isArray(itemGroups) ? itemGroups : []).forEach((items) => {
-    (Array.isArray(items) ? items : []).forEach((item) => {
-      if (!item || isUrlBlockedBySearchBlacklist(item && item.url, searchBlacklistItems)) {
-        return;
-      }
-      const urlKey = buildSearchDedupEntryKey(item);
-      const existingIndex = mergedIndexByKey.get(urlKey);
-      if (typeof existingIndex === 'number') {
-        if (shouldReplaceDedupedSearchItem(item, merged[existingIndex])) {
-          merged[existingIndex] = item;
-        }
-        return;
-      }
-      mergedIndexByKey.set(urlKey, merged.length);
-      merged.push(item);
-    });
+  return SEARCH_SUGGESTION_UTILS.mergeSearchItems(itemGroups, {
+    buildKey: buildSearchDedupEntryKey,
+    shouldReplace: shouldReplaceDedupedSearchItem,
+    isBlocked: (item) => isUrlBlockedBySearchBlacklist(item && item.url, searchBlacklistItems)
   });
-  return merged;
 }
 
 // Function to get search suggestions from history and top sites
 function normalizeSearchSuggestionsMode(mode) {
-  if (SEARCH_PROTOCOL.normalizeSearchSuggestionsMode) {
-    return SEARCH_PROTOCOL.normalizeSearchSuggestionsMode(mode);
-  }
-  if (SEARCH_SUGGESTION_UTILS.normalizeSearchSuggestionsMode) {
-    return SEARCH_SUGGESTION_UTILS.normalizeSearchSuggestionsMode(mode);
-  }
-  return mode === 'classic' ? 'classic' : 'classic';
+  return SEARCH_PROTOCOL.normalizeSearchSuggestionsMode(mode);
 }
 
 async function getSearchSuggestions(query, options) {
@@ -8733,44 +8444,20 @@ async function getSearchSuggestions(query, options) {
     }
 
     function normalizeFaviconHost(hostname) {
-      if (SEARCH_FAVICON_UTILS.normalizeFaviconHost) {
-        return SEARCH_FAVICON_UTILS.normalizeFaviconHost(hostname);
-      }
-      if (!hostname) {
-        return '';
-      }
-      const host = String(hostname).toLowerCase().replace(/^www\./i, '');
-      if (host === 'feishu.cn' || host.endsWith('.feishu.cn')) {
-        return 'feishu.cn';
-      }
-      return host;
+      return SEARCH_FAVICON_UTILS.normalizeFaviconHost(hostname);
     }
 
     function getGoogleFaviconUrl(hostname) {
-      if (SEARCH_FAVICON_UTILS.getGoogleFaviconUrl) {
-        return SEARCH_FAVICON_UTILS.getGoogleFaviconUrl(hostname, {
-          runtimeGetUrl: chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function'
-            ? chrome.runtime.getURL.bind(chrome.runtime)
-            : null,
-          size: 128
-        });
-      }
-      const normalized = normalizeFaviconHost(hostname);
-      if (!normalized) {
-        return '';
-      }
-      return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(normalized)}&sz=128`;
+      return SEARCH_FAVICON_UTILS.getGoogleFaviconUrl(hostname, {
+        runtimeGetUrl: chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function'
+          ? chrome.runtime.getURL.bind(chrome.runtime)
+          : null,
+        size: 128
+      });
     }
 
     function getFaviconIsUrl(hostname) {
-      if (SEARCH_FAVICON_UTILS.getFaviconIsUrl) {
-        return SEARCH_FAVICON_UTILS.getFaviconIsUrl(hostname);
-      }
-      const normalized = normalizeFaviconHost(hostname);
-      if (!normalized) {
-        return '';
-      }
-      return `https://favicon.is/${encodeURIComponent(normalized)}`;
+      return SEARCH_FAVICON_UTILS.getFaviconIsUrl(hostname);
     }
 
     function getBrandAccentForHost(hostname) {
@@ -10766,34 +10453,15 @@ async function getSearchSuggestions(query, options) {
     }
 
     function buildSearchUrl(template, query) {
-      if (SITE_SEARCH_PROVIDER_UTILS.buildSearchUrl) {
-        return SITE_SEARCH_PROVIDER_UTILS.buildSearchUrl(template, query);
-      }
-      if (!template) {
-        return '';
-      }
-      return template.replace(/\{query\}/g, encodeURIComponent(query));
+      return SITE_SEARCH_PROVIDER_UTILS.buildSearchUrl(template, query);
     }
 
     function isInteractiveSiteSearchProvider(provider) {
-      if (SITE_SEARCH_PROVIDER_UTILS.isInteractiveSiteSearchProvider) {
-        return SITE_SEARCH_PROVIDER_UTILS.isInteractiveSiteSearchProvider(provider);
-      }
-      return Boolean(
-        provider &&
-        provider.action === 'openAndSubmit' &&
-        provider.submitStrategy === 'geminiPrompt'
-      );
+      return SITE_SEARCH_PROVIDER_UTILS.isInteractiveSiteSearchProvider(provider);
     }
 
     function shouldRestrictInteractiveSiteSearchSuggestions(provider, query) {
-      if (SITE_SEARCH_PROVIDER_UTILS.shouldRestrictInteractiveSiteSearchSuggestions) {
-        return SITE_SEARCH_PROVIDER_UTILS.shouldRestrictInteractiveSiteSearchSuggestions(provider, query);
-      }
-      return Boolean(
-        isInteractiveSiteSearchProvider(provider) &&
-        String(query || '').trim()
-      );
+      return SITE_SEARCH_PROVIDER_UTILS.shouldRestrictInteractiveSiteSearchSuggestions(provider, query);
     }
 
     function openSiteSearchProviderQuery(provider, query) {
@@ -10822,52 +10490,19 @@ async function getSearchSuggestions(query, options) {
     }
 
     function getProviderIcon(provider) {
-      if (SEARCH_FAVICON_UTILS.getSiteSearchProviderIconUrl) {
-        return SEARCH_FAVICON_UTILS.getSiteSearchProviderIconUrl(provider, {
-          includeFaviconIsFallback: true,
-          runtimeGetUrl: chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function'
-            ? chrome.runtime.getURL.bind(chrome.runtime)
-            : null,
-          size: FAVICON_GOOGLE_SIZE
-        });
-      }
-      if (provider && provider.icon) {
-        return provider.icon;
-      }
-      if (provider && provider.iconUrl) {
-        return provider.iconUrl;
-      }
-      return '';
+      return SEARCH_FAVICON_UTILS.getSiteSearchProviderIconUrl(provider, {
+        includeFaviconIsFallback: true,
+        runtimeGetUrl: chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function'
+          ? chrome.runtime.getURL.bind(chrome.runtime)
+          : null,
+        size: FAVICON_GOOGLE_SIZE
+      });
     }
 
     function mergeCustomProvidersLocal(baseItems, customItems) {
-      if (SITE_SEARCH_PROVIDER_UTILS.mergeCustomProviders) {
-        return SITE_SEARCH_PROVIDER_UTILS.mergeCustomProviders(baseItems, customItems, {
-          skipDisabledCustom: true
-        });
-      }
-      const merged = [];
-      const seen = new Set();
-      (customItems || []).forEach((item) => {
-        if (item && item.disabled) {
-          return;
-        }
-        const key = String(item && item.key ? item.key : '').toLowerCase();
-        if (!key || seen.has(key)) {
-          return;
-        }
-        seen.add(key);
-        merged.push(item);
+      return SITE_SEARCH_PROVIDER_UTILS.mergeCustomProviders(baseItems, customItems, {
+        skipDisabledCustom: true
       });
-      (baseItems || []).forEach((item) => {
-        const key = String(item && item.key ? item.key : '').toLowerCase();
-        if (!key || seen.has(key)) {
-          return;
-        }
-        seen.add(key);
-        merged.push(item);
-      });
-      return merged;
     }
 
     function getSiteSearchProviders() {
@@ -10964,195 +10599,19 @@ async function getSearchSuggestions(query, options) {
     chrome.storage.onChanged.addListener(siteSearchStorageListener);
 
     function getSiteSearchDisplayName(provider) {
-      if (SITE_SEARCH_PROVIDER_UTILS.getSiteSearchDisplayName) {
-        return SITE_SEARCH_PROVIDER_UTILS.getSiteSearchDisplayName(provider, t, t('site_search_default', '站内'));
-      }
-      if (!provider) {
-        return t('site_search_default', '站内');
-      }
-      return provider.name || provider.key || t('site_search_default', '站内');
-    }
-
-    function getProviderHost(provider) {
-      if (SITE_SEARCH_PROVIDER_UTILS.getProviderHost) {
-        return SITE_SEARCH_PROVIDER_UTILS.getProviderHost(provider);
-      }
-      if (!provider || !provider.template) {
-        return '';
-      }
-      try {
-        const url = provider.template.replace(/\{query\}/g, 'test');
-        return normalizeHost(new URL(url).hostname);
-      } catch (e) {
-        return '';
-      }
-    }
-
-    function suggestionMatchesProvider(suggestion, provider) {
-      if (SITE_SEARCH_PROVIDER_UTILS.suggestionMatchesProvider) {
-        return SITE_SEARCH_PROVIDER_UTILS.suggestionMatchesProvider(suggestion, provider);
-      }
-      if (!suggestion || !provider || !suggestion.url) {
-        return false;
-      }
-      const normalizedSuggestion = getSuggestionHost(suggestion);
-      const normalizedProvider = getProviderHost(provider);
-      if (!normalizedSuggestion || !normalizedProvider) {
-        return false;
-      }
-      return normalizedSuggestion === normalizedProvider ||
-        normalizedSuggestion.endsWith(`.${normalizedProvider}`) ||
-        normalizedProvider.endsWith(`.${normalizedSuggestion}`);
-    }
-
-    function isAsciiToken(token) {
-      return /^[a-z0-9]+$/i.test(token || '');
-    }
-
-    function isProviderTokenEligible(token) {
-      if (!token) {
-        return false;
-      }
-      const normalized = String(token).trim();
-      if (!normalized) {
-        return false;
-      }
-      if (isAsciiToken(normalized)) {
-        return normalized.length >= 3;
-      }
-      return normalized.length >= 2;
-    }
-
-    function providerMatchesSuggestion(provider, suggestion) {
-      if (SITE_SEARCH_PROVIDER_UTILS.providerMatchesSuggestion) {
-        return SITE_SEARCH_PROVIDER_UTILS.providerMatchesSuggestion(provider, suggestion);
-      }
-      if (!provider || !suggestion) {
-        return false;
-      }
-      if (suggestionMatchesProvider(suggestion, provider)) {
-        return true;
-      }
-      const titleText = String(suggestion.title || '').toLowerCase();
-      const urlText = String(suggestion.url || '').toLowerCase();
-      const hostText = normalizeHost(getSuggestionHost(suggestion));
-      const haystack = `${titleText} ${urlText} ${hostText}`;
-      const tokens = [provider.key, provider.name].concat(provider.aliases || []);
-      for (let i = 0; i < tokens.length; i += 1) {
-        const token = String(tokens[i] || '').toLowerCase().trim();
-        if (!isProviderTokenEligible(token)) {
-          continue;
-        }
-        if (token && haystack.includes(token)) {
-          return true;
-        }
-      }
-      return false;
+      return SITE_SEARCH_PROVIDER_UTILS.getSiteSearchDisplayName(
+        provider,
+        t,
+        t('site_search_default', '站内')
+      );
     }
 
     function findProviderForSuggestionMatch(suggestion, providers) {
-      if (SITE_SEARCH_PROVIDER_UTILS.findProviderForSuggestionMatch) {
-        return SITE_SEARCH_PROVIDER_UTILS.findProviderForSuggestionMatch(suggestion, providers);
-      }
-      if (!suggestion) {
-        return null;
-      }
-      const eligibleTypes = new Set(['topSite', 'history', 'bookmark']);
-      if (!eligibleTypes.has(suggestion.type) && !suggestion.isTopSite) {
-        return null;
-      }
-      return (providers || []).find((provider) => providerMatchesSuggestion(provider, suggestion)) || null;
-    }
-
-    function findSiteSearchProviderByKey(trigger, providers) {
-      if (SITE_SEARCH_PROVIDER_UTILS.findSiteSearchProviderByKey) {
-        return SITE_SEARCH_PROVIDER_UTILS.findSiteSearchProviderByKey(trigger, providers);
-      }
-      const key = String(trigger || '').toLowerCase();
-      if (!key) {
-        return null;
-      }
-      return (providers || []).find((provider) => String(provider.key || '').toLowerCase() === key) || null;
-    }
-
-    function findSiteSearchProvider(trigger, providers) {
-      if (SITE_SEARCH_PROVIDER_UTILS.findSiteSearchProvider) {
-        return SITE_SEARCH_PROVIDER_UTILS.findSiteSearchProvider(trigger, providers);
-      }
-      const key = String(trigger || '').toLowerCase();
-      if (!key) {
-        return null;
-      }
-      return (providers || []).find((provider) => {
-        const providerKey = String(provider.key || '').toLowerCase();
-        if (providerKey === key) {
-          return true;
-        }
-        const aliases = Array.isArray(provider.aliases) ? provider.aliases : [];
-        return aliases.some((alias) => String(alias).toLowerCase() === key);
-      }) || null;
-    }
-
-    function findSiteSearchProviderByInput(input, providers) {
-      if (SITE_SEARCH_PROVIDER_UTILS.findSiteSearchProviderByInput) {
-        return SITE_SEARCH_PROVIDER_UTILS.findSiteSearchProviderByInput(input, providers);
-      }
-      const raw = String(input || '').trim();
-      if (!raw) {
-        return null;
-      }
-      const firstToken = raw.split(/\s+/)[0];
-      const keyMatch = findSiteSearchProvider(firstToken, providers) ||
-        findSiteSearchProviderByKey(firstToken, providers);
-      if (keyMatch) {
-        return keyMatch;
-      }
-      let host = '';
-      if (/[./]/.test(firstToken)) {
-        try {
-          const url = firstToken.includes('://') ? firstToken : `https://${firstToken}`;
-          host = new URL(url).hostname;
-        } catch (e) {
-          host = firstToken.split('/')[0] || '';
-        }
-      }
-      if (!host) {
-        return null;
-      }
-      const normalizedHost = normalizeHost(host);
-      return (providers || []).find((provider) => {
-        const providerHost = normalizeHost(getProviderHost(provider));
-        if (!providerHost) {
-          return false;
-        }
-        return normalizedHost === providerHost ||
-          normalizedHost.endsWith(`.${providerHost}`) ||
-          providerHost.endsWith(`.${normalizedHost}`);
-      }) || null;
+      return SITE_SEARCH_PROVIDER_UTILS.findProviderForSuggestionMatch(suggestion, providers);
     }
 
     function getInlineSiteSearchCandidate(input, providers) {
-      if (SITE_SEARCH_PROVIDER_UTILS.getInlineSiteSearchCandidate) {
-        return SITE_SEARCH_PROVIDER_UTILS.getInlineSiteSearchCandidate(input, providers);
-      }
-      const raw = String(input || '').trim();
-      if (!raw) {
-        return null;
-      }
-      const tokens = raw.split(/\s+/);
-      if (tokens.length < 2) {
-        return null;
-      }
-      const provider = findSiteSearchProviderByInput(raw, providers);
-      if (!provider) {
-        return null;
-      }
-      const firstToken = tokens[0];
-      const remainder = raw.slice(raw.indexOf(firstToken) + firstToken.length).trim();
-      if (!remainder) {
-        return null;
-      }
-      return { provider: provider, query: remainder };
+      return SITE_SEARCH_PROVIDER_UTILS.getInlineSiteSearchCandidate(input, providers);
     }
 
     function matchesTopSitePrefix(suggestion, input) {
@@ -11218,105 +10677,10 @@ async function getSearchSuggestions(query, options) {
       return null;
     }
 
-    function getProviderHost(provider) {
-      if (SITE_SEARCH_PROVIDER_UTILS.getProviderHost) {
-        return SITE_SEARCH_PROVIDER_UTILS.getProviderHost(provider);
-      }
-      if (!provider || !provider.template) {
-        return '';
-      }
-      try {
-        const url = provider.template.replace(/\{query\}/g, 'test');
-        return normalizeHost(new URL(url).hostname);
-      } catch (e) {
-        return '';
-      }
-    }
-
-    function getSuggestionHost(suggestion) {
-      if (SITE_SEARCH_PROVIDER_UTILS.getSuggestionHost) {
-        return SITE_SEARCH_PROVIDER_UTILS.getSuggestionHost(suggestion);
-      }
-      if (!suggestion || !suggestion.url) {
-        return '';
-      }
-      try {
-        return normalizeHost(new URL(suggestion.url).hostname);
-      } catch (e) {
-        return '';
-      }
-    }
-
-    function hostsMatch(a, b) {
-      if (SITE_SEARCH_PROVIDER_UTILS.hostsMatch) {
-        return SITE_SEARCH_PROVIDER_UTILS.hostsMatch(a, b);
-      }
-      if (!a || !b) {
-        return false;
-      }
-      return a === b || a.endsWith(`.${b}`) || b.endsWith(`.${a}`);
-    }
-
-    function providerMatchesInputPrefix(provider, input) {
-      if (SITE_SEARCH_PROVIDER_UTILS.providerMatchesInputPrefix) {
-        return SITE_SEARCH_PROVIDER_UTILS.providerMatchesInputPrefix(provider, input);
-      }
-      const needle = String(input || '').toLowerCase();
-      if (!needle || !provider) {
-        return false;
-      }
-      const allowPrefix = needle.length >= 2;
-      const tokens = [provider.key, provider.name].concat(provider.aliases || []);
-      for (let i = 0; i < tokens.length; i += 1) {
-        const token = String(tokens[i] || '').toLowerCase();
-        if (!token) {
-          continue;
-        }
-        if (token === needle || (allowPrefix && token.startsWith(needle))) {
-          return true;
-        }
-      }
-      const host = normalizeHost(getProviderHost(provider));
-      if (host) {
-        const hostToken = host.split('.')[0] || host;
-        if (hostToken === needle || (allowPrefix && hostToken.startsWith(needle))) {
-          return true;
-        }
-      }
-      return false;
-    }
-
     function getSiteSearchTriggerCandidate(input, providers, topSiteMatch) {
-      if (SITE_SEARCH_PROVIDER_UTILS.getSiteSearchTriggerCandidate) {
-        return SITE_SEARCH_PROVIDER_UTILS.getSiteSearchTriggerCandidate(input, providers, topSiteMatch, {
-          matchesTopSitePrefix
-        });
-      }
-      const trimmed = String(input || '').trim();
-      if (!trimmed || /\s/.test(trimmed)) {
-        return null;
-      }
-      let provider = findSiteSearchProvider(trimmed, providers) ||
-        findSiteSearchProviderByKey(trimmed, providers);
-      if (!provider && topSiteMatch) {
-        provider = (providers || []).find((candidate) => {
-          if (!suggestionMatchesProvider(topSiteMatch, candidate)) {
-            return false;
-          }
-          return providerMatchesInputPrefix(candidate, trimmed);
-        }) || null;
-      }
-      if (!provider) {
-        return null;
-      }
-      if (topSiteMatch && trimmed.length <= 2 && matchesTopSitePrefix(topSiteMatch, trimmed)) {
-        const providerHost = getProviderHost(provider);
-        const topHost = getSuggestionHost(topSiteMatch);
-        if (!hostsMatch(providerHost, topHost)) {
-          return null;
-        }
-      }
-      return provider;
+      return SITE_SEARCH_PROVIDER_UTILS.getSiteSearchTriggerCandidate(input, providers, topSiteMatch, {
+        matchesTopSitePrefix
+      });
     }
 
     function activateSiteSearch(provider) {
