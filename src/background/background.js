@@ -844,6 +844,8 @@ const OVERLAY_SCRIPT_FILES = Object.freeze([
   'src/shared/blacklist-utils.js',
   'src/shared/search/favicons.js',
   'src/shared/search/site-search-providers.js',
+  'src/overlay/lifecycle.js',
+  'src/overlay/shell.js',
   'src/overlay/input-ui.js'
 ]);
 const HOTKEY_DUP_GUARD_MS = 180;
@@ -5846,6 +5848,8 @@ async function getSearchSuggestions(query, options) {
   // This function executes in the page world, so it must read injected globals locally.
   const SEARCH_FAVICON_UTILS = globalThis.LumnoSearchFavicons || {};
   const SITE_SEARCH_PROVIDER_UTILS = globalThis.LumnoSiteSearchProviders || {};
+  const OVERLAY_LIFECYCLE_UTILS = globalThis.LumnoOverlayLifecycle || {};
+  const OVERLAY_SHELL_UTILS = globalThis.LumnoOverlayShell || {};
   const OVERLAY_SEARCH_PROTOCOL = Object.freeze({
     action: 'getSearchSuggestions',
     mode: 'classic'
@@ -6887,95 +6891,54 @@ async function getSearchSuggestions(query, options) {
 
   // Helper function to remove overlay and clean up styles
   function removeOverlay(overlayElement) {
-    clearOverlayEnterAnimationFrames();
-    clearSiteSearchShellAnimation();
-    stopOverlayViewportSizeSync();
-    stopOverlayAntiTranslateObserver();
-    if (aiModeDecor && typeof aiModeDecor.destroy === 'function') {
-      aiModeDecor.destroy();
-      aiModeDecor = null;
-    }
-    if (aiModeSweep && typeof aiModeSweep.destroy === 'function') {
-      aiModeSweep.destroy();
-      aiModeSweep = null;
-    }
-    aiModeSweepActive = false;
-    if (overlayElement) {
-      overlayElement.remove();
-    }
-    // Also remove the scrollbar style
-    const scrollbarStyle = document.getElementById('_x_extension_scrollbar_style_2024_unique_');
-    if (scrollbarStyle) {
-      scrollbarStyle.remove();
-    }
-    const overlayThemeStyle = document.getElementById('_x_extension_overlay_theme_style_2024_unique_');
-    if (overlayThemeStyle) {
-      overlayThemeStyle.remove();
-    }
-    if (captureTabHandler) {
-      document.removeEventListener('keydown', captureTabHandler, true);
-      captureTabHandler = null;
-    }
-    if (keydownHandler) {
-      document.removeEventListener('keydown', keydownHandler);
-      keydownHandler = null;
-    }
-    if (clickOutsideHandler) {
-      document.removeEventListener('click', clickOutsideHandler);
-      clickOutsideHandler = null;
-    }
-    if (overlayKeyCaptureHandler) {
-      window.removeEventListener('keydown', overlayKeyCaptureHandler, true);
-      overlayKeyCaptureHandler = null;
-    }
-    if (overlayThemeStorageListener) {
-      chrome.storage.onChanged.removeListener(overlayThemeStorageListener);
-      overlayThemeStorageListener = null;
-    }
-    if (overlayLanguageStorageListener) {
-      chrome.storage.onChanged.removeListener(overlayLanguageStorageListener);
-      overlayLanguageStorageListener = null;
-    }
-    if (overlaySearchEngineStorageListener) {
-      chrome.storage.onChanged.removeListener(overlaySearchEngineStorageListener);
-      overlaySearchEngineStorageListener = null;
-    }
-    if (overlaySearchResultPriorityStorageListener) {
-      chrome.storage.onChanged.removeListener(overlaySearchResultPriorityStorageListener);
-      overlaySearchResultPriorityStorageListener = null;
-    }
-    if (overlaySearchBlacklistStorageListener) {
-      chrome.storage.onChanged.removeListener(overlaySearchBlacklistStorageListener);
-      overlaySearchBlacklistStorageListener = null;
-    }
-    if (overlayTabPriorityStorageListener) {
-      chrome.storage.onChanged.removeListener(overlayTabPriorityStorageListener);
-      overlayTabPriorityStorageListener = null;
-    }
-    if (overlayTabScoreDebugStorageListener) {
-      chrome.storage.onChanged.removeListener(overlayTabScoreDebugStorageListener);
-      overlayTabScoreDebugStorageListener = null;
-    }
-    if (overlaySizeStorageListener) {
-      chrome.storage.onChanged.removeListener(overlaySizeStorageListener);
-      overlaySizeStorageListener = null;
-    }
-    if (overlayThemeMediaListener) {
-      overlayMediaQuery.removeEventListener('change', overlayThemeMediaListener);
-      overlayThemeMediaListener = null;
-    }
-    if (overlayScrollPauseHandler) {
-      window.removeEventListener('scroll', overlayScrollPauseHandler, true);
-      window.removeEventListener('wheel', overlayScrollPauseHandler, true);
-      window.removeEventListener('touchmove', overlayScrollPauseHandler, true);
-      overlayScrollPauseHandler = null;
-    }
-    stopOverlayPageThemeObserver();
-    if (siteSearchStorageListener) {
-      chrome.storage.onChanged.removeListener(siteSearchStorageListener);
-      siteSearchStorageListener = null;
-    }
-    window.removeEventListener('resize', updateSiteSearchPrefixLayout);
+    const cleanupState = OVERLAY_LIFECYCLE_UTILS.cleanupOverlay({
+      overlayElement,
+      documentTarget: document,
+      windowTarget: window,
+      chromeStorage: chrome && chrome.storage ? chrome.storage : null,
+      overlayMediaQuery,
+      updateSiteSearchPrefixLayout,
+      clearOverlayEnterAnimationFrames,
+      clearSiteSearchShellAnimation,
+      stopOverlayViewportSizeSync,
+      stopOverlayAntiTranslateObserver,
+      stopOverlayPageThemeObserver,
+      aiModeDecor,
+      aiModeSweep,
+      captureTabHandler,
+      keydownHandler,
+      clickOutsideHandler,
+      overlayKeyCaptureHandler,
+      overlayThemeStorageListener,
+      overlayLanguageStorageListener,
+      overlaySearchEngineStorageListener,
+      overlaySearchResultPriorityStorageListener,
+      overlaySearchBlacklistStorageListener,
+      overlayTabPriorityStorageListener,
+      overlayTabScoreDebugStorageListener,
+      overlaySizeStorageListener,
+      overlayThemeMediaListener,
+      overlayScrollPauseHandler,
+      siteSearchStorageListener
+    });
+    aiModeDecor = cleanupState.aiModeDecor;
+    aiModeSweep = cleanupState.aiModeSweep;
+    aiModeSweepActive = cleanupState.aiModeSweepActive;
+    captureTabHandler = cleanupState.captureTabHandler;
+    keydownHandler = cleanupState.keydownHandler;
+    clickOutsideHandler = cleanupState.clickOutsideHandler;
+    overlayKeyCaptureHandler = cleanupState.overlayKeyCaptureHandler;
+    overlayThemeStorageListener = cleanupState.overlayThemeStorageListener;
+    overlayLanguageStorageListener = cleanupState.overlayLanguageStorageListener;
+    overlaySearchEngineStorageListener = cleanupState.overlaySearchEngineStorageListener;
+    overlaySearchResultPriorityStorageListener = cleanupState.overlaySearchResultPriorityStorageListener;
+    overlaySearchBlacklistStorageListener = cleanupState.overlaySearchBlacklistStorageListener;
+    overlayTabPriorityStorageListener = cleanupState.overlayTabPriorityStorageListener;
+    overlayTabScoreDebugStorageListener = cleanupState.overlayTabScoreDebugStorageListener;
+    overlaySizeStorageListener = cleanupState.overlaySizeStorageListener;
+    overlayThemeMediaListener = cleanupState.overlayThemeMediaListener;
+    overlayScrollPauseHandler = cleanupState.overlayScrollPauseHandler;
+    siteSearchStorageListener = cleanupState.siteSearchStorageListener;
   }
   
   // Check if the overlay already exists
@@ -6986,49 +6949,13 @@ async function getSearchSuggestions(query, options) {
     removeOverlay(overlay);
   } else {
     // If it doesn't exist, create it (toggle on)
-    overlay = document.createElement('div');
-    overlay.id = '_x_extension_overlay_2024_unique_';
-    applyNoTranslate(overlay);
     const initialOverlaySizePreset = getOverlaySizePreset(overlaySizeMode);
-    overlay.style.cssText = `
-      all: unset !important;
-      position: fixed !important;
-      top: 20vh !important;
-      left: 50% !important;
-      transform: translateX(-50%) translateY(10px) scale(0.985) !important;
-      transform-origin: top center !important;
-      width: ${initialOverlaySizePreset.width}px !important;
-      max-width: calc(100vw - 24px) !important;
-      max-height: ${initialOverlaySizePreset.maxHeightVh}vh !important;
-      background: var(--x-ov-bg, rgba(255, 255, 255, 0.95)) !important;
-      backdrop-filter: blur(var(--x-ov-blur, 24px)) saturate(var(--x-ov-saturate, 165%)) !important;
-      -webkit-backdrop-filter: blur(var(--x-ov-blur, 24px)) saturate(var(--x-ov-saturate, 165%)) !important;
-      border: 1px solid var(--x-ov-border, rgba(0, 0, 0, 0.08)) !important;
-      border-radius: 28px !important;
-      box-shadow: var(--x-ov-shadow, 0 17px 120px 0 rgba(0, 0, 0, 0.05), 0 32px 44.5px 0 rgba(0, 0, 0, 0.10), 0 80px 120px 0 rgba(0, 0, 0, 0.15)) !important;
-      z-index: 2147483647 !important;
-      font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
-      display: flex !important;
-      flex-direction: column !important;
-      align-items: center !important;
-      overflow: hidden !important;
-      contain: layout style !important;
-      box-sizing: border-box !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      line-height: 1 !important;
-      text-decoration: none !important;
-      list-style: none !important;
-      outline: none !important;
-      color: var(--x-ov-text, #111827) !important;
-      font-size: 100% !important;
-      font: inherit !important;
-      vertical-align: baseline !important;
-      opacity: 0 !important;
-      filter: blur(6px) !important;
-      will-change: transform, opacity, filter !important;
-      transition: transform 340ms cubic-bezier(0.2, 1, 0.36, 1), opacity 220ms ease, filter 300ms ease !important;
-    `;
+    overlay = OVERLAY_SHELL_UTILS.createOverlayElement(document, {
+      id: '_x_extension_overlay_2024_unique_',
+      width: initialOverlaySizePreset.width,
+      maxHeightVh: initialOverlaySizePreset.maxHeightVh
+    });
+    applyNoTranslate(overlay);
 
 
     const applyOverlayTheme = (mode) => {
@@ -7077,69 +7004,7 @@ async function getSearchSuggestions(query, options) {
     // 使用系统字体，避免外链字体依赖。
     
     // Add style to hide scrollbars for WebKit browsers
-    const scrollbarStyle = document.createElement('style');
-    scrollbarStyle.id = '_x_extension_scrollbar_style_2024_unique_';
-    scrollbarStyle.textContent = `
-      #_x_extension_overlay_2024_unique_ *::-webkit-scrollbar {
-        display: none !important;
-      }
-      #_x_extension_overlay_2024_unique_ * {
-        -ms-overflow-style: none !important;
-        scrollbar-width: none !important;
-      }
-    `;
-    document.head.appendChild(scrollbarStyle);
-
-    const overlayThemeStyle = document.createElement('style');
-    overlayThemeStyle.id = '_x_extension_overlay_theme_style_2024_unique_';
-    overlayThemeStyle.textContent = `
-      #_x_extension_overlay_2024_unique_ .ri-icon {
-        width: var(--ri-size, 16px);
-        height: var(--ri-size, 16px);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        line-height: 1;
-        font-size: var(--ri-size, 16px);
-        flex-shrink: 0;
-        font-style: normal !important;
-        font-variant: normal !important;
-        text-transform: none !important;
-      }
-      #_x_extension_overlay_2024_unique_ button .ri-icon,
-      #_x_extension_overlay_2024_unique_ [role="button"] .ri-icon,
-      #_x_extension_overlay_2024_unique_ a .ri-icon {
-        cursor: inherit !important;
-        pointer-events: none !important;
-      }
-      #_x_extension_overlay_2024_unique_ .ri-icon::before {
-        font-style: normal !important;
-        font-variant: normal !important;
-        text-transform: none !important;
-      }
-      #_x_extension_overlay_2024_unique_ .ri-size-8 { --ri-size: 8px; }
-      #_x_extension_overlay_2024_unique_ .ri-size-12 { --ri-size: 12px; }
-      #_x_extension_overlay_2024_unique_ .ri-size-16 { --ri-size: 16px; }
-      #_x_extension_overlay_2024_unique_ .ri-size-20 { --ri-size: 20px; }
-      #_x_extension_overlay_2024_unique_ .ri-size-24 { --ri-size: 24px; }
-      #_x_extension_search_input_2024_unique_ {
-        text-align: left !important;
-      }
-      #_x_extension_search_input_2024_unique_::placeholder {
-        color: var(--x-ov-placeholder, #9CA3AF) !important;
-        opacity: 0.68 !important;
-        text-align: left !important;
-      }
-      #_x_extension_search_input_2024_unique_::-webkit-input-placeholder {
-        color: var(--x-ov-placeholder, #9CA3AF) !important;
-        opacity: 0.68 !important;
-      }
-      #_x_extension_search_input_2024_unique_::selection {
-        background: #CFE8FF !important;
-        color: #1E3A8A !important;
-      }
-    `;
-    document.head.appendChild(overlayThemeStyle);
+    OVERLAY_SHELL_UTILS.appendOverlayStyleNodes(document);
 
     
     if (typeof window._x_extension_createSearchInput_2024_unique_ !== 'function') {
