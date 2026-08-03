@@ -1674,6 +1674,9 @@
   "command_show_tab_switcher": {
     "message": "最近のタブ切り替えを開く"
   },
+  "command_show_selection_quick_actions": {
+    "message": "選択したテキストの操作を開く"
+  },
   "shortcut_reference_title": {
     "message": "キー一覧"
   },
@@ -1688,6 +1691,9 @@
   },
   "shortcut_reference_group_web_clip": {
     "message": "Webクリップ"
+  },
+  "shortcut_reference_group_selection": {
+    "message": "選択したテキスト"
   },
   "shortcut_reference_unset": {
     "message": "未設定"
@@ -1715,6 +1721,12 @@
   },
   "shortcut_reference_tab_switcher_desc": {
     "message": "最近のタブ切り替えを開きます"
+  },
+  "shortcut_reference_selection_quick_actions_title": {
+    "message": "選択テキストの操作を開く"
+  },
+  "shortcut_reference_selection_quick_actions_desc": {
+    "message": "現在選択しているテキストを処理する Lumno の操作を開きます"
   },
   "shortcut_reference_search_input_history_title": {
     "message": "前または次の入力に切り替え"

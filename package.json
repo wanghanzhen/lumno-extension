@@ -34,6 +34,7 @@
     "test:tab-groups": "node scripts/test-background-tab-groups.js",
     "test:selection-target": "node scripts/test-background-selection-target.js",
     "test:selection-intent": "node scripts/test-selection-intent.js",
+    "test:selection-entrypoints": "node scripts/test-selection-quick-action-entrypoints.js",
     "test:selection-quick-actions": "node scripts/test-selection-quick-actions-integration.js",
     "test:selection-quick-actions-dom": "node scripts/test-selection-quick-actions-dom.js",
     "test:command-target-policy": "node scripts/test-background-command-target-policy.js",

@@ -1674,6 +1674,9 @@
   "command_show_tab_switcher": {
     "message": "Open recent tab switcher"
   },
+  "command_show_selection_quick_actions": {
+    "message": "Open actions for selected text"
+  },
   "shortcut_reference_title": {
     "message": "Shortcut list"
   },
@@ -1688,6 +1691,9 @@
   },
   "shortcut_reference_group_web_clip": {
     "message": "Web clip"
+  },
+  "shortcut_reference_group_selection": {
+    "message": "Selected text"
   },
   "shortcut_reference_unset": {
     "message": "Not set"
@@ -1715,6 +1721,12 @@
   },
   "shortcut_reference_tab_switcher_desc": {
     "message": "Open the recent tab switcher"
+  },
+  "shortcut_reference_selection_quick_actions_title": {
+    "message": "Open selected-text actions"
+  },
+  "shortcut_reference_selection_quick_actions_desc": {
+    "message": "Open Lumno actions for the currently selected text"
   },
   "shortcut_reference_search_input_history_title": {
     "message": "Previous or next input"

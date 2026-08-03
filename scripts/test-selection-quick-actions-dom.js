@@ -8,12 +8,14 @@ function wait(ms) {
 }
 
 (async () => {
-  const dom = new JSDOM('<!doctype html><html lang="zh-CN"><body><p id="copy">serendipity</p></body></html>', {
+  const dom = new JSDOM('<!doctype html><html lang="zh-CN"><body><p id="copy">serendipity</p><div id="editable" contenteditable="true">private draft</div></body></html>', {
     pretendToBeVisual: true,
     runScripts: 'outside-only',
     url: 'https://example.com/article'
   });
   const { window } = dom;
+  let runtimeMessageListener = null;
+  const sentMessages = [];
   window.LumnoSelectionIntent = selectionIntent;
   window.Range.prototype.getBoundingClientRect = () => ({
     bottom: 44,
@@ -32,7 +34,13 @@ function wait(ms) {
     runtime: {
       getURL(path) { return `chrome-extension://lumno/${path}`; },
       lastError: null,
-      sendMessage(_message, callback) { callback({ ok: true }); }
+      onMessage: {
+        addListener(listener) { runtimeMessageListener = listener; }
+      },
+      sendMessage(message, callback) {
+        sentMessages.push(message);
+        callback({ ok: true });
+      }
     },
     storage: {
       local: {
@@ -72,6 +80,64 @@ function wait(ms) {
 
   window.document.dispatchEvent(new window.Event('copy', { bubbles: true }));
   assert.strictEqual(host.hidden, true, 'copy should dismiss the selection affordance');
+
+  let explicitResponse = null;
+  runtimeMessageListener(
+    { action: 'openSelectionQuickActionsMenu' },
+    {},
+    (response) => { explicitResponse = response; }
+  );
+  await wait(20);
+  assert(explicitResponse && explicitResponse.ok === true);
+  assert.strictEqual(host.hidden, false, 'explicit shortcut should open the complete action menu');
+  assert.strictEqual(host.dataset.visible, 'true');
+  assert.strictEqual(
+    window.document.activeElement,
+    host,
+    'explicit shortcut should move keyboard focus into the shadow-hosted action menu'
+  );
+
+  paragraph.dispatchEvent(new window.MouseEvent('contextmenu', {
+    bubbles: true,
+    clientX: 100,
+    clientY: 40
+  }));
+  let contextResponse = null;
+  runtimeMessageListener(
+    {
+      action: 'runSelectionContextMenuAction',
+      expectedText: 'serendipity',
+      intent: 'translate'
+    },
+    {},
+    (response) => { contextResponse = response; }
+  );
+  assert(contextResponse && contextResponse.ok === true);
+  assert.strictEqual(sentMessages.at(-1).action, 'runSelectionQuickAction');
+  assert.strictEqual(sentMessages.at(-1).intent, 'translate');
+
+  const editable = window.document.getElementById('editable');
+  const editableRange = window.document.createRange();
+  editableRange.selectNodeContents(editable);
+  selection.removeAllRanges();
+  selection.addRange(editableRange);
+  editable.dispatchEvent(new window.MouseEvent('contextmenu', {
+    bubbles: true,
+    clientX: 100,
+    clientY: 70
+  }));
+  let sensitiveResponse = null;
+  runtimeMessageListener(
+    {
+      action: 'runSelectionContextMenuAction',
+      expectedText: 'private draft',
+      intent: 'ask'
+    },
+    {},
+    (response) => { sensitiveResponse = response; }
+  );
+  assert(sensitiveResponse && sensitiveResponse.ok === false);
+  assert.strictEqual(sensitiveResponse.reason, 'selection-unavailable');
 
   dom.window.close();
   console.log('selection quick actions DOM tests passed');

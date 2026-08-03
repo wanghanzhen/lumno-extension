@@ -1674,6 +1674,9 @@
   "command_show_tab_switcher": {
     "message": "打开最近标签页切换器"
   },
+  "command_show_selection_quick_actions": {
+    "message": "打开所选文字操作"
+  },
   "shortcut_reference_title": {
     "message": "快捷键列表"
   },
@@ -1688,6 +1691,9 @@
   },
   "shortcut_reference_group_web_clip": {
     "message": "网页剪裁"
+  },
+  "shortcut_reference_group_selection": {
+    "message": "所选文字"
   },
   "shortcut_reference_unset": {
     "message": "未设置"
@@ -1715,6 +1721,12 @@
   },
   "shortcut_reference_tab_switcher_desc": {
     "message": "打开最近标签页切换器"
+  },
+  "shortcut_reference_selection_quick_actions_title": {
+    "message": "打开所选文字操作"
+  },
+  "shortcut_reference_selection_quick_actions_desc": {
+    "message": "为当前选中的文字打开 Lumno 操作菜单"
   },
   "shortcut_reference_search_input_history_title": {
     "message": "切换上一条或下一条输入"

@@ -33,6 +33,9 @@
             "default": "Alt+Q",
             "mac": "Alt+Q"
          }
+      },
+      "show-selection-quick-actions": {
+         "description": "__MSG_command_show_selection_quick_actions__"
       }
    },
    "content_scripts": [
@@ -115,6 +118,6 @@
   "default_locale": "zh_CN",
    "name": "__MSG_ext_name__",
    "author": "Kubai087",
-   "permissions": [ "scripting", "tabs", "tabGroups", "history", "topSites", "bookmarks", "storage", "identity", "alarms", "search", "favicon" ],
+   "permissions": [ "scripting", "tabs", "tabGroups", "history", "topSites", "bookmarks", "storage", "identity", "alarms", "search", "favicon", "contextMenus" ],
    "version": "0.9.30"
 }

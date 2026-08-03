@@ -120,6 +120,12 @@ try {
 }
 
 try {
+  importScripts(chrome.runtime.getURL('src/background/selection-quick-action-entrypoints.js'));
+} catch (error) {
+  console.warn('Lumno: failed to load selection quick action entrypoints.', error);
+}
+
+try {
   importScripts(chrome.runtime.getURL('src/background/message-router.js'));
 } catch (error) {
   console.warn('Lumno: failed to load background message router.', error);
@@ -1351,6 +1357,8 @@ const SHOW_SEARCH_COMMAND_NAME = 'show-search';
 const SHOW_SEARCH_PREFILL_COMMAND_NAME = 'show-search-prefill';
 const SHOW_SEARCH_PREFILL_V_COMMAND_NAME = 'show-search-prefill-v';
 const SHOW_TAB_SWITCHER_COMMAND_NAME = 'show-tab-switcher';
+const SHOW_SELECTION_QUICK_ACTIONS_COMMAND_NAME = 'show-selection-quick-actions';
+const SELECTION_QUICK_ACTION_ENTRYPOINTS = globalThis.LumnoSelectionQuickActionEntrypoints || {};
 const TAB_SWITCHER_EXTENSION_PAGE_PORT_NAME = 'lumno-tab-switcher-extension-page';
 const TAB_SWITCHER_EXTENSION_PAGE_PORT_WAIT_MS = 650;
 const TAB_SWITCHER_EXTENSION_PAGE_PORT_RETRY_MS = 50;
@@ -4455,18 +4463,27 @@ chrome.commands.onCommand.addListener(function(command) {
     command !== SHOW_SEARCH_COMMAND_NAME &&
     command !== SHOW_SEARCH_PREFILL_COMMAND_NAME &&
     command !== SHOW_SEARCH_PREFILL_V_COMMAND_NAME &&
-    command !== SHOW_TAB_SWITCHER_COMMAND_NAME
+    command !== SHOW_TAB_SWITCHER_COMMAND_NAME &&
+    command !== SHOW_SELECTION_QUICK_ACTIONS_COMMAND_NAME
   ) {
     return;
   }
-  if (command !== SHOW_TAB_SWITCHER_COMMAND_NAME) {
+  if (
+    command === SHOW_SEARCH_COMMAND_NAME ||
+    command === SHOW_SEARCH_PREFILL_COMMAND_NAME ||
+    command === SHOW_SEARCH_PREFILL_V_COMMAND_NAME
+  ) {
     recordCloudUsageMetric('command_bar_opened');
   }
   const source = command === SHOW_SEARCH_COMMAND_NAME
     ? 'commands'
     : (command === SHOW_SEARCH_PREFILL_COMMAND_NAME
       ? 'commands-prefill'
-      : (command === SHOW_SEARCH_PREFILL_V_COMMAND_NAME ? 'commands-copy-url' : 'commands-tab-switcher'));
+      : (command === SHOW_SEARCH_PREFILL_V_COMMAND_NAME
+        ? 'commands-copy-url'
+        : (command === SHOW_TAB_SWITCHER_COMMAND_NAME
+          ? 'commands-tab-switcher'
+          : 'commands-selection-quick-actions')));
   logHotkeyDebug('received', { command: command, source: source });
   chrome.tabs.query({active: true, currentWindow: true}, function(activeTabs) {
     if (command === SHOW_SEARCH_PREFILL_V_COMMAND_NAME) {
@@ -4475,6 +4492,10 @@ chrome.commands.onCommand.addListener(function(command) {
     }
     if (command === SHOW_TAB_SWITCHER_COMMAND_NAME) {
       triggerTabSwitcherForTab(activeTabs[0], source);
+      return;
+    }
+    if (command === SHOW_SELECTION_QUICK_ACTIONS_COMMAND_NAME) {
+      triggerSelectionQuickActionsMenuForTab(activeTabs[0], source);
       return;
     }
     triggerShowSearchForTab(activeTabs[0], source);
@@ -4504,6 +4525,7 @@ chrome.tabs.onCreated.addListener((tab) => {
 });
 
 chrome.runtime.onInstalled.addListener((details) => {
+  syncSelectionQuickActionContextMenus();
   if (!details) {
     schedulePersistPinnedTabSnapshot();
     return;
@@ -4543,6 +4565,7 @@ function restoreBackgroundStateOnStartup() {
 if (chrome && chrome.runtime && chrome.runtime.onStartup) {
   chrome.runtime.onStartup.addListener(() => {
     restoreBackgroundStateOnStartup();
+    syncSelectionQuickActionContextMenus();
   });
 }
 ensureTabSwitchStatsLoaded().catch(() => {});
@@ -4853,6 +4876,73 @@ async function runSelectionQuickAction(request, sender) {
   }
   return submitSelectionPromptInTab(provider, prompt, entryUrl, targetInfo.tab, targetInfo);
 }
+
+let selectionContextMenuSyncQueue = Promise.resolve();
+
+function syncSelectionQuickActionContextMenus() {
+  if (typeof SELECTION_QUICK_ACTION_ENTRYPOINTS.syncContextMenus !== 'function') {
+    return Promise.resolve({ ok: false, reason: 'selection-entrypoints-unavailable' });
+  }
+  const task = selectionContextMenuSyncQueue
+    .catch(() => {})
+    .then(() => loadSelectionQuickActionsEnabled())
+    .then((enabled) => new Promise((resolve) => {
+      SELECTION_QUICK_ACTION_ENTRYPOINTS.syncContextMenus(chrome, enabled, resolve);
+    }));
+  selectionContextMenuSyncQueue = task.then(() => undefined, () => undefined);
+  return task;
+}
+
+function triggerSelectionQuickActionsMenuForTab(activeTab, source, callback) {
+  const finish = typeof callback === 'function' ? callback : () => {};
+  if (!activeTab || typeof activeTab.id !== 'number') {
+    finish(false, 'active-tab-unavailable');
+    return;
+  }
+  chrome.tabs.sendMessage(activeTab.id, {
+    action: 'openSelectionQuickActionsMenu',
+    source: source || 'command'
+  }, (response) => {
+    if (chrome.runtime && chrome.runtime.lastError) {
+      finish(false, chrome.runtime.lastError.message || 'selection-content-unavailable');
+      return;
+    }
+    finish(Boolean(response && response.ok), response && response.reason ? response.reason : '');
+  });
+}
+
+function handleSelectionQuickActionContextMenuClick(info, tab) {
+  if (typeof SELECTION_QUICK_ACTION_ENTRYPOINTS.getActionForMenuItem !== 'function') {
+    return;
+  }
+  const intent = SELECTION_QUICK_ACTION_ENTRYPOINTS.getActionForMenuItem(
+    info && info.menuItemId
+  );
+  if (!intent) {
+    return;
+  }
+  if (!tab || typeof tab.id !== 'number') {
+    return;
+  }
+  const text = info && typeof info.selectionText === 'string' ? info.selectionText : '';
+  chrome.tabs.sendMessage(tab.id, {
+    action: 'runSelectionContextMenuAction',
+    expectedText: text,
+    intent
+  }, () => {
+    if (chrome.runtime && chrome.runtime.lastError) {
+      // Restricted pages do not host the content runtime; keep the native menu
+      // action inert instead of bypassing editable/sensitive-field protection.
+      return;
+    }
+  });
+}
+
+if (chrome && chrome.contextMenus && chrome.contextMenus.onClicked) {
+  chrome.contextMenus.onClicked.addListener(handleSelectionQuickActionContextMenuClick);
+}
+
+syncSelectionQuickActionContextMenus();
 
 function runInteractiveSiteSearchProvider(provider, query, sender, disposition) {
   const prompt = String(query || '').trim();
@@ -7922,6 +8012,9 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     if (normalized) {
       schedulePersistPinnedTabSnapshot();
     }
+  }
+  if (changes[SELECTION_QUICK_ACTIONS_ENABLED_STORAGE_KEY]) {
+    syncSelectionQuickActionContextMenus();
   }
   if (changes[SITE_SEARCH_STORAGE_KEY] || changes[SITE_SEARCH_DISABLED_STORAGE_KEY]) {
     siteSearchCache = null;

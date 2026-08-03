@@ -53,6 +53,15 @@
         default: 'Alt+Q',
         mac: 'Alt+Q'
       }
+    },
+    {
+      id: 'show-selection-quick-actions',
+      commandName: 'show-selection-quick-actions',
+      titleKey: 'shortcut_reference_selection_quick_actions_title',
+      titleFallback: 'Open selected-text actions',
+      descKey: 'shortcut_reference_selection_quick_actions_desc',
+      descFallback: 'Open Lumno actions for the selected text',
+      defaultShortcut: {}
     }
   ];
 
@@ -198,6 +207,14 @@
       itemIds: [
         'document-pip-picker-parent',
         'document-pip-picker-child'
+      ]
+    },
+    {
+      id: 'selection',
+      titleKey: 'shortcut_reference_group_selection',
+      titleFallback: 'Selected text',
+      itemIds: [
+        'show-selection-quick-actions'
       ]
     }
   ];

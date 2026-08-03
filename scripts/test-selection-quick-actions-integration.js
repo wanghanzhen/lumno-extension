@@ -7,6 +7,7 @@ const optionsSource = fs.readFileSync('src/options/options.js', 'utf8');
 const backgroundSource = fs.readFileSync('src/background/background.js', 'utf8');
 const contentSource = fs.readFileSync('src/content/selection-quick-actions.js', 'utf8');
 const cloudSchemaSource = fs.readFileSync('src/shared/cloud-sync-schema.js', 'utf8');
+const shortcutReferenceSource = fs.readFileSync('src/shared/shortcut-reference.js', 'utf8');
 const localeNames = ['en', 'ja', 'zh_CN', 'zh_TW'];
 const storageKey = '_x_extension_selection_quick_actions_enabled_2026_unique_';
 
@@ -20,6 +21,20 @@ assert.deepStrictEqual(
   'provider-aware settings and the selection classifier should load before the content interaction runtime'
 );
 assert.strictEqual(selectionContentScript.run_at, 'document_idle');
+assert(manifest.permissions.includes('contextMenus'), 'selection actions should declare the contextMenus permission');
+assert(
+  manifest.commands['show-selection-quick-actions'],
+  'manifest should expose an assignable selected-text command'
+);
+assert.strictEqual(
+  manifest.commands['show-selection-quick-actions'].suggested_key,
+  undefined,
+  'selected-text command should not claim another default browser shortcut'
+);
+assert(
+  shortcutReferenceSource.includes("commandName: 'show-selection-quick-actions'"),
+  'settings shortcut reference should expose the selected-text command'
+);
 
 const optionsToggleTag = optionsHtml.match(
   /<input\b[^>]*id="_x_extension_selection_quick_actions_toggle_2026_unique_"[^>]*>/
@@ -62,6 +77,30 @@ assert(
   backgroundSource.includes('result[SELECTION_QUICK_ACTIONS_ENABLED_STORAGE_KEY] === true'),
   'background actions should require an explicit enabled setting'
 );
+assert(
+  backgroundSource.includes("action: 'openSelectionQuickActionsMenu'"),
+  'browser command should ask the content runtime to open the explicit action menu'
+);
+assert(
+  contentSource.includes("request.action === 'openSelectionQuickActionsMenu'"),
+  'content runtime should handle the explicit selected-text command'
+);
+assert(
+  backgroundSource.includes('handleSelectionQuickActionContextMenuClick'),
+  'background should route native context menu actions into the selection submit flow'
+);
+assert(
+  backgroundSource.includes("action: 'runSelectionContextMenuAction'"),
+  'native context menu clicks should return to the content runtime for DOM sensitivity checks'
+);
+assert(
+  contentSource.includes('editable || sensitive'),
+  'explicit entrypoints should preserve editable and sensitive-field suppression'
+);
+assert(
+  contentSource.includes("menu.addEventListener('keydown', handleMenuKeydown)"),
+  'the explicit shortcut menu should support keyboard navigation'
+);
 
 localeNames.forEach((locale) => {
   const messages = JSON.parse(fs.readFileSync(`_locales/${locale}/messages.json`, 'utf8'));
@@ -73,7 +112,11 @@ localeNames.forEach((locale) => {
     'selection_quick_action_explain',
     'selection_quick_action_summarize',
     'selection_quick_action_search',
-    'selection_quick_action_calculate'
+    'selection_quick_action_calculate',
+    'command_show_selection_quick_actions',
+    'shortcut_reference_group_selection',
+    'shortcut_reference_selection_quick_actions_title',
+    'shortcut_reference_selection_quick_actions_desc'
   ].forEach((key) => {
     assert(messages[key] && String(messages[key].message || '').trim(), `${locale} should localize ${key}`);
   });

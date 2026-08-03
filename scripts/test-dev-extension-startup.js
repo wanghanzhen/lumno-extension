@@ -32,7 +32,7 @@ async function run() {
   assert.match(backgroundSource, /DEV_EXTENSION_STARTUP\.isSameVersionReload\(details, chrome\.runtime\.getManifest\(\)\.version\)/);
   assert.match(
     backgroundSource,
-    /chrome\.runtime\.onStartup\.addListener\(\(\) => \{\s*restoreBackgroundStateOnStartup\(\);\s*\}\)/
+    /chrome\.runtime\.onStartup\.addListener\(\(\) => \{\s*restoreBackgroundStateOnStartup\(\);\s*syncSelectionQuickActionContextMenus\(\);\s*\}\)/
   );
   assert.doesNotMatch(backgroundSource, /reloadDevelopmentExtensionOnStartup/);
 }

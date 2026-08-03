@@ -1674,6 +1674,9 @@
   "command_show_tab_switcher": {
     "message": "開啟最近分頁切換器"
   },
+  "command_show_selection_quick_actions": {
+    "message": "開啟所選文字操作"
+  },
   "shortcut_reference_title": {
     "message": "快捷鍵列表"
   },
@@ -1688,6 +1691,9 @@
   },
   "shortcut_reference_group_web_clip": {
     "message": "網頁剪裁"
+  },
+  "shortcut_reference_group_selection": {
+    "message": "所選文字"
   },
   "shortcut_reference_unset": {
     "message": "未設定"
@@ -1715,6 +1721,12 @@
   },
   "shortcut_reference_tab_switcher_desc": {
     "message": "開啟最近分頁切換器"
+  },
+  "shortcut_reference_selection_quick_actions_title": {
+    "message": "開啟所選文字操作"
+  },
+  "shortcut_reference_selection_quick_actions_desc": {
+    "message": "為目前選取的文字開啟 Lumno 操作選單"
   },
   "shortcut_reference_search_input_history_title": {
     "message": "切換上一筆或下一筆輸入"

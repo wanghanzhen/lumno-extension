@@ -41,6 +41,7 @@
   let requestSequence = 0;
   let pointerPosition = { x: 0, y: 0 };
   let currentCandidate = null;
+  let contextMenuCandidate = null;
   let host = null;
   let shadow = null;
   let surface = null;
@@ -214,6 +215,43 @@
     return Math.sqrt((dx * dx) + (dy * dy));
   }
 
+  function handleMenuKeydown(event) {
+    if (!menu || menu.hidden) {
+      return;
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      hideSurface();
+      return;
+    }
+    const buttons = Array.from(menu.querySelectorAll('button:not(:disabled)'));
+    if (buttons.length === 0) {
+      return;
+    }
+    const currentIndex = Math.max(0, buttons.indexOf(event.target));
+    const columns = menu.dataset.complete === 'true' ? 3 : buttons.length;
+    let nextIndex = currentIndex;
+    if (event.key === 'ArrowRight') {
+      nextIndex = (currentIndex + 1) % buttons.length;
+    } else if (event.key === 'ArrowLeft') {
+      nextIndex = (currentIndex - 1 + buttons.length) % buttons.length;
+    } else if (event.key === 'ArrowDown') {
+      nextIndex = (currentIndex + columns) % buttons.length;
+    } else if (event.key === 'ArrowUp') {
+      nextIndex = (currentIndex - columns + buttons.length) % buttons.length;
+    } else if (event.key === 'Home') {
+      nextIndex = 0;
+    } else if (event.key === 'End') {
+      nextIndex = buttons.length - 1;
+    } else {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    buttons[nextIndex].focus();
+  }
+
   function ensureSurface() {
     if (host && host.isConnected) {
       return;
@@ -297,6 +335,10 @@
         align-items: center;
         gap: 2px;
       }
+      .lumno-selection-menu[data-complete="true"] {
+        display: grid;
+        grid-template-columns: repeat(3, max-content);
+      }
       .lumno-selection-menu[hidden], .lumno-selection-more[hidden], .lumno-selection-main[hidden] { display: none; }
       .lumno-selection-menu i { font-size: 15px; }
       .lumno-selection-status {
@@ -350,6 +392,7 @@
       event.preventDefault();
       event.stopPropagation();
     });
+    menu.addEventListener('keydown', handleMenuKeydown);
     surface.addEventListener('pointerenter', () => {
       if (dismissTimer) {
         window.clearTimeout(dismissTimer);
@@ -454,26 +497,38 @@
     return button;
   }
 
-  function renderMenu() {
+  function renderMenu(options) {
     if (!currentCandidate || !host) {
       return;
     }
     const primary = currentCandidate.classification.action;
-    const actions = [primary];
-    if (primary !== 'ask') {
+    const complete = Boolean(options && options.complete);
+    const actions = complete
+      ? [primary, ...INTENT.ACTIONS.filter((action) => action !== primary)]
+      : [primary];
+    if (!complete && primary !== 'ask') {
       actions.push('ask');
     }
-    if (primary !== 'search') {
+    if (!complete && primary !== 'search') {
       actions.push('search');
     }
     mainButton.hidden = true;
     moreButton.hidden = true;
     moreButton.setAttribute('aria-expanded', 'true');
-    menu.replaceChildren(...actions.slice(0, 3).map(buildMenuAction));
+    menu.dataset.complete = complete ? 'true' : 'false';
+    menu.replaceChildren(...actions.slice(0, complete ? INTENT.ACTIONS.length : 3).map(buildMenuAction));
     menu.hidden = false;
     status.hidden = true;
     positionSurface(currentCandidate.rect);
     scheduleDismiss(CHIP_DISMISS_MS);
+    if (complete && options && options.focusFirst) {
+      window.requestAnimationFrame(() => {
+        const firstAction = menu && menu.querySelector('button:not(:disabled)');
+        if (firstAction) {
+          firstAction.focus();
+        }
+      });
+    }
   }
 
   function renderSendingStatus() {
@@ -531,7 +586,7 @@
     }
   }
 
-  function buildCandidate(selection, pointerEvent) {
+  function buildCandidate(selection, pointerEvent, options) {
     if (!selection || selection.isCollapsed || selection.rangeCount <= 0) {
       return null;
     }
@@ -541,22 +596,80 @@
     if (!element || !rect || host && element === host) {
       return null;
     }
+    const editable = isEditableElement(element);
+    const sensitive = isSensitiveElement(element);
     const classification = INTENT.classifySelection(selection.toString(), {
-      editable: isEditableElement(element),
+      editable,
       insideCode: isInsideCode(element),
       pageLanguage: document.documentElement && document.documentElement.lang,
-      sensitive: isSensitiveElement(element),
+      sensitive,
       uiLanguage: getCurrentLocale()
     });
-    if (classification.suppressed || classification.confidence === 'low') {
+    const explicit = Boolean(options && options.explicit);
+    const maxLength = Number(INTENT.MAX_SELECTION_LENGTH) || 2400;
+    if (!classification.text || classification.text.length > maxLength || editable || sensitive) {
       return null;
     }
+    if (!explicit && (classification.suppressed || classification.confidence === 'low')) {
+      return null;
+    }
+    const effectiveClassification = explicit && classification.confidence === 'low'
+      ? Object.freeze({ ...classification, action: 'ask', confidence: 'medium', suppressed: false })
+      : classification;
     return {
-      classification,
+      classification: effectiveClassification,
       pointerX: Number(pointerEvent && pointerEvent.clientX) || pointerPosition.x,
       pointerY: Number(pointerEvent && pointerEvent.clientY) || pointerPosition.y,
       rect
     };
+  }
+
+  function openExplicitMenu() {
+    hideSurface();
+    if (!enabled || !window.getSelection) {
+      return { ok: false, reason: enabled ? 'selection-unavailable' : 'selection-quick-actions-disabled' };
+    }
+    const candidate = buildCandidate(window.getSelection(), null, { explicit: true });
+    if (!candidate) {
+      return { ok: false, reason: 'selection-unavailable' };
+    }
+    ensureSurface();
+    currentCandidate = { ...candidate, mode: 'explicit' };
+    host.hidden = false;
+    host.dataset.visible = 'false';
+    renderMenu({ complete: true, focusFirst: true });
+    window.requestAnimationFrame(() => {
+      if (host && currentCandidate) {
+        host.dataset.visible = 'true';
+      }
+    });
+    return { ok: true };
+  }
+
+  function runExplicitContextMenuAction(action, expectedText) {
+    hideSurface();
+    if (!enabled || !INTENT.ACTIONS.includes(action)) {
+      return { ok: false, reason: enabled ? 'selection-action-invalid' : 'selection-quick-actions-disabled' };
+    }
+    const current = window.getSelection
+      ? buildCandidate(window.getSelection(), null, { explicit: true })
+      : null;
+    const cached = contextMenuCandidate &&
+      Date.now() - contextMenuCandidate.capturedAt <= 15000
+      ? contextMenuCandidate.candidate
+      : null;
+    const candidate = current || cached;
+    contextMenuCandidate = null;
+    const expected = INTENT.normalizeText(expectedText);
+    if (!candidate || (expected && candidate.classification.text !== expected)) {
+      return { ok: false, reason: 'selection-unavailable' };
+    }
+    ensureSurface();
+    currentCandidate = { ...candidate, mode: 'explicit' };
+    host.hidden = false;
+    host.dataset.visible = 'true';
+    sendSelectionAction(action);
+    return { ok: true };
   }
 
   function evaluateSelection(pointerEvent) {
@@ -651,6 +764,14 @@
   document.addEventListener('pointermove', handlePointerMove, true);
   document.addEventListener('pointerdown', handlePointerDown, true);
   document.addEventListener('selectionchange', handleSelectionChange, true);
+  document.addEventListener('contextmenu', (event) => {
+    const candidate = window.getSelection
+      ? buildCandidate(window.getSelection(), event, { explicit: true })
+      : null;
+    contextMenuCandidate = candidate
+      ? { candidate, capturedAt: Date.now() }
+      : null;
+  }, true);
   document.addEventListener('copy', hideSurface, true);
   document.addEventListener('scroll', hideSurface, true);
   document.addEventListener('keydown', (event) => {
@@ -658,6 +779,21 @@
       hideSurface();
     }
   }, true);
+
+  if (chrome && chrome.runtime && chrome.runtime.onMessage) {
+    chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
+      if (!request) {
+        return;
+      }
+      if (request.action === 'openSelectionQuickActionsMenu') {
+        sendResponse(openExplicitMenu());
+        return;
+      }
+      if (request.action === 'runSelectionContextMenuAction') {
+        sendResponse(runExplicitContextMenuAction(request.intent, request.expectedText));
+      }
+    });
+  }
 
   if (chrome && chrome.storage && chrome.storage.onChanged) {
     chrome.storage.onChanged.addListener((changes, areaName) => {
