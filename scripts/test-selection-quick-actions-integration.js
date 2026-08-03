@@ -101,6 +101,10 @@ assert(
   contentSource.includes("menu.addEventListener('keydown', handleMenuKeydown)"),
   'the explicit shortcut menu should support keyboard navigation'
 );
+assert(
+  !contentSource.includes('POINTER_CONFIRM_DISTANCE_PX'),
+  'high-confidence actions should not downgrade solely because the pointer moved away'
+);
 
 localeNames.forEach((locale) => {
   const messages = JSON.parse(fs.readFileSync(`_locales/${locale}/messages.json`, 'utf8'));

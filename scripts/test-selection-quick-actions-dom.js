@@ -72,11 +72,22 @@ function wait(ms) {
     clientY: 40
   }));
 
+  window.document.dispatchEvent(new window.MouseEvent('pointermove', {
+    bubbles: true,
+    clientX: 1000,
+    clientY: 700
+  }));
+
   await wait(380);
   const host = window.document.getElementById('_x_extension_selection_quick_actions_host_2026_unique_');
   assert(host, 'high-confidence selection should create the quick action host');
   assert.strictEqual(host.hidden, false);
   assert.strictEqual(host.dataset.visible, 'true');
+  assert.strictEqual(
+    host.dataset.mode,
+    'high',
+    'high-confidence text should keep its direct action even when the pointer moves away'
+  );
 
   window.document.dispatchEvent(new window.Event('copy', { bubbles: true }));
   assert.strictEqual(host.hidden, true, 'copy should dismiss the selection affordance');

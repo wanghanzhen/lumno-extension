@@ -17,7 +17,6 @@
   const HOST_ID = '_x_extension_selection_quick_actions_host_2026_unique_';
   const HIGH_DELAY_MS = 300;
   const MEDIUM_DELAY_MS = 460;
-  const POINTER_CONFIRM_DISTANCE_PX = 52;
   const DOT_DISMISS_MS = 2200;
   const CHIP_DISMISS_MS = 3600;
   const providerStorageRuntime = globalThis.LumnoSettings &&
@@ -39,7 +38,6 @@
   let showTimer = null;
   let dismissTimer = null;
   let requestSequence = 0;
-  let pointerPosition = { x: 0, y: 0 };
   let currentCandidate = null;
   let contextMenuCandidate = null;
   let host = null;
@@ -207,12 +205,6 @@
       return false;
     }
     return INTENT.normalizeText(selection.toString()) === candidate.classification.text;
-  }
-
-  function getPointerDistance(candidate) {
-    const dx = Number(pointerPosition.x) - Number(candidate.pointerX);
-    const dy = Number(pointerPosition.y) - Number(candidate.pointerY);
-    return Math.sqrt((dx * dx) + (dy * dy));
   }
 
   function handleMenuKeydown(event) {
@@ -457,6 +449,7 @@
     const label = getActionLabel(action);
     host.hidden = false;
     host.dataset.visible = 'false';
+    host.dataset.mode = mode;
     mainButton.hidden = false;
     mainButton.disabled = false;
     mainButton.dataset.iconOnly = mode === 'medium' ? 'true' : 'false';
@@ -586,7 +579,7 @@
     }
   }
 
-  function buildCandidate(selection, pointerEvent, options) {
+  function buildCandidate(selection, options) {
     if (!selection || selection.isCollapsed || selection.rangeCount <= 0) {
       return null;
     }
@@ -618,8 +611,6 @@
       : classification;
     return {
       classification: effectiveClassification,
-      pointerX: Number(pointerEvent && pointerEvent.clientX) || pointerPosition.x,
-      pointerY: Number(pointerEvent && pointerEvent.clientY) || pointerPosition.y,
       rect
     };
   }
@@ -629,7 +620,7 @@
     if (!enabled || !window.getSelection) {
       return { ok: false, reason: enabled ? 'selection-unavailable' : 'selection-quick-actions-disabled' };
     }
-    const candidate = buildCandidate(window.getSelection(), null, { explicit: true });
+    const candidate = buildCandidate(window.getSelection(), { explicit: true });
     if (!candidate) {
       return { ok: false, reason: 'selection-unavailable' };
     }
@@ -652,7 +643,7 @@
       return { ok: false, reason: enabled ? 'selection-action-invalid' : 'selection-quick-actions-disabled' };
     }
     const current = window.getSelection
-      ? buildCandidate(window.getSelection(), null, { explicit: true })
+      ? buildCandidate(window.getSelection(), { explicit: true })
       : null;
     const cached = contextMenuCandidate &&
       Date.now() - contextMenuCandidate.capturedAt <= 15000
@@ -672,12 +663,12 @@
     return { ok: true };
   }
 
-  function evaluateSelection(pointerEvent) {
+  function evaluateSelection() {
     hideSurface();
     if (!enabled || !window.getSelection) {
       return;
     }
-    const candidate = buildCandidate(window.getSelection(), pointerEvent);
+    const candidate = buildCandidate(window.getSelection());
     if (!candidate) {
       return;
     }
@@ -689,18 +680,8 @@
       if (sequence !== requestSequence || !enabled || !isSelectionStillCurrent(candidate)) {
         return;
       }
-      const behaviorConfirmed = getPointerDistance(candidate) <= POINTER_CONFIRM_DISTANCE_PX;
-      if (initialHigh && behaviorConfirmed) {
-        renderCandidate(candidate, 'high');
-        return;
-      }
       if (initialHigh) {
-        showTimer = window.setTimeout(() => {
-          showTimer = null;
-          if (sequence === requestSequence && enabled && isSelectionStillCurrent(candidate)) {
-            renderCandidate(candidate, 'medium');
-          }
-        }, MEDIUM_DELAY_MS - HIGH_DELAY_MS);
+        renderCandidate(candidate, 'high');
         return;
       }
       renderCandidate(candidate, 'medium');
@@ -708,16 +689,11 @@
   }
 
   function handlePointerUp(event) {
-    pointerPosition = { x: event.clientX, y: event.clientY };
     if (event.button !== 0 || !enabled ||
         (host && event.composedPath && event.composedPath().includes(host))) {
       return;
     }
-    window.setTimeout(() => evaluateSelection(event), 0);
-  }
-
-  function handlePointerMove(event) {
-    pointerPosition = { x: event.clientX, y: event.clientY };
+    window.setTimeout(evaluateSelection, 0);
   }
 
   function handlePointerDown(event) {
@@ -761,12 +737,11 @@
   }
 
   document.addEventListener('pointerup', handlePointerUp, true);
-  document.addEventListener('pointermove', handlePointerMove, true);
   document.addEventListener('pointerdown', handlePointerDown, true);
   document.addEventListener('selectionchange', handleSelectionChange, true);
-  document.addEventListener('contextmenu', (event) => {
+  document.addEventListener('contextmenu', () => {
     const candidate = window.getSelection
-      ? buildCandidate(window.getSelection(), event, { explicit: true })
+      ? buildCandidate(window.getSelection(), { explicit: true })
       : null;
     contextMenuCandidate = candidate
       ? { candidate, capturedAt: Date.now() }
